@@ -1,0 +1,34 @@
+package entity
+
+import (
+	"time"
+)
+
+type SysUser struct {
+	BaseEntity `xorm:"extends"`
+
+	UserId      int64     `xorm:"pk autoincr" json:"userId" form:"userId"`
+	DeptId      int64     `json:"deptId,omitempty"`
+	UserName    string    `json:"userName,omitempty" form:"userName"`
+	NickName    string    `json:"nickName,omitempty"`
+	Email       string    `json:"email,omitempty"`
+	Phonenumber string    `json:"phonenumber,omitempty" form:"phonenumber"`
+	Sex         string    `json:"sex,omitempty"`
+	Avatar      string    `json:"avatar,omitempty"`
+	Password    string    `json:"password,omitempty"`
+	Status      string    `json:"status,omitempty"`
+	DelFlag     string    `json:"delFlag,omitempty"`
+	LoginIp     string    `json:"loginIp,omitempty"`
+	LoginDate   time.Time `json:"loginDate,omitempty"`
+	ValidDay    string    `json:"validDay,omitempty"`
+
+	Dept  *SysDept  `xorm:"-" json:"dept,omitempty"`
+	Roles []SysRole `xorm:"-" json:"roles,omitempty"`
+
+	RoleIds []int64 `xorm:"-" json:"roleIds,omitempty" form:"roleIds"`
+	PostIds []int64 `xorm:"-" json:"postIds,omitempty" form:"postIds"`
+}
+
+func (user *SysUser) IsAdmin() bool {
+	return user.UserId == 1
+}
