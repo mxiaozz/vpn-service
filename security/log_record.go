@@ -11,8 +11,8 @@ import (
 	"github.com/mssola/useragent"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
-	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
+	"vpn-web.funcworks.net/model/login"
 	"vpn-web.funcworks.net/model/request"
 	"vpn-web.funcworks.net/service/system"
 	"vpn-web.funcworks.net/util"
@@ -162,7 +162,7 @@ func doBefore(ext *ExtInfo, ctx *gin.Context) (*logContext, error) {
 
 	// login user info
 	if user, _ := ctx.Get(cst.SYS_LOGIN_USER_KEY); user != nil {
-		loginUser := user.(*model.LoginUser)
+		loginUser := user.(*login.LoginUser)
 		logCtx.UserId = loginUser.UserId
 		logCtx.UserName = loginUser.User.UserName
 		logCtx.DeptName = loginUser.User.Dept.DeptName

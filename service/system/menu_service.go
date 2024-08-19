@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
-	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
+	"vpn-web.funcworks.net/model/login"
 	"vpn-web.funcworks.net/model/response"
 	"vpn-web.funcworks.net/util"
 )
@@ -18,7 +18,7 @@ type menuService struct {
 }
 
 // 用户登录获取左侧菜单树结构
-func (ms *menuService) GetUserMenuTree(user *model.LoginUser) ([]response.RouterVo, error) {
+func (ms *menuService) GetUserMenuTree(user *login.LoginUser) ([]response.RouterVo, error) {
 	var menus []entity.SysMenu
 	var err error
 	if user.User.IsAdmin() {
@@ -346,7 +346,7 @@ func (ms *menuService) existMenuRole(menuId int64) (bool, error) {
 }
 
 // 角色管理，角色编辑菜单树选择框列表
-func (ms *menuService) GetRolerMenuTreeSelect(user *model.LoginUser) ([]entity.SysMenu, error) {
+func (ms *menuService) GetRolerMenuTreeSelect(user *login.LoginUser) ([]entity.SysMenu, error) {
 	var menus []entity.SysMenu
 	var err error
 	if user.User.IsAdmin() {

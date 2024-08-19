@@ -8,8 +8,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
-	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
+	"vpn-web.funcworks.net/model/login"
 	"vpn-web.funcworks.net/model/request"
 	"vpn-web.funcworks.net/service/system"
 )
@@ -115,13 +115,13 @@ func (us *loginService) checkPassword(password string, count int, user *entity.S
 	return nil
 }
 
-func (us *loginService) newLoginUser(sysUser *entity.SysUser) (*model.LoginUser, error) {
+func (us *loginService) newLoginUser(sysUser *entity.SysUser) (*login.LoginUser, error) {
 	perms, err := system.MenuService.GetMenuPermission(sysUser)
 	if err != nil {
 		return nil, err
 	}
 
-	loginUser := &model.LoginUser{
+	loginUser := &login.LoginUser{
 		UserId:      sysUser.UserId,
 		DeptId:      sysUser.DeptId,
 		User:        sysUser,

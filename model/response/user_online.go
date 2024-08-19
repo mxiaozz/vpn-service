@@ -1,4 +1,4 @@
-package model
+package response
 
 type UserOnline struct {
 	TokenId       string `json:"tokenId"`                  // 会话编号

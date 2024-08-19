@@ -9,8 +9,9 @@ import (
 	"vpn-web.funcworks.net/controller"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
-	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
+	"vpn-web.funcworks.net/model/login"
+	"vpn-web.funcworks.net/model/response"
 	"vpn-web.funcworks.net/service/openvpn"
 	"vpn-web.funcworks.net/util"
 	"vpn-web.funcworks.net/util/rsp"
@@ -24,7 +25,7 @@ type onlineController struct {
 
 func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 	// 获取查询条件
-	var userOnline model.UserOnline
+	var userOnline response.UserOnline
 	if err := ctx.ShouldBind(&userOnline); err != nil {
 		rsp.Fail(err.Error(), ctx)
 		return
@@ -38,7 +39,7 @@ func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 		return
 	}
 
-	var users = make([]model.UserOnline, 0)
+	var users = make([]response.UserOnline, 0)
 	for _, key := range keys {
 		userStr, err := gb.RedisProxy.Get(key)
 		if err != nil {
@@ -48,14 +49,14 @@ func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 		}
 
 		// 转换为 LoginUser
-		var loginUser model.LoginUser
+		var loginUser login.LoginUser
 		if err = json.Unmarshal([]byte(userStr), &loginUser); err != nil {
 			gb.Logger.Errorln("将用户缓存信息转换为 LoginUser 对象失败", err.Error())
 			rsp.Fail("获取在线用户失败", ctx)
 			return
 		}
 
-		users = append(users, model.UserOnline{
+		users = append(users, response.UserOnline{
 			TokenId:   loginUser.Token,
 			DeptName:  loginUser.User.Dept.DeptName,
 			UserName:  loginUser.User.UserName,
@@ -67,7 +68,7 @@ func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 	}
 
 	// 在线用户列表
-	users = util.NewList(users).Filter(func(uo model.UserOnline) bool {
+	users = util.NewList(users).Filter(func(uo response.UserOnline) bool {
 		if userOnline.UserName != "" && uo.UserName != userOnline.UserName {
 			return false
 		}
@@ -75,21 +76,21 @@ func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 			return false
 		}
 		return true
-	}).Order(func(a, b model.UserOnline) int {
+	}).Order(func(a, b response.UserOnline) int {
 		return cmp.Compare(a.LoginTime, b.LoginTime)
 	})
 
 	// vpn 用户列表
 	vpnUsers := util.Convert(openvpn.OpenvpnService.VpnStatus.OnlineUsers,
-		func(u entity.SysLoginLog) model.UserOnline {
-			return model.UserOnline{
+		func(u entity.SysLoginLog) response.UserOnline {
+			return response.UserOnline{
 				UserName:      u.UserName,
 				Ipaddr:        u.Ipaddr,
 				LoginLocation: "openvpn",
 				LoginTime:     u.LoginTime.UnixMilli(),
 			}
 		}).
-		Order(func(a, b model.UserOnline) int {
+		Order(func(a, b response.UserOnline) int {
 			return cmp.Compare(a.LoginTime, b.LoginTime)
 		})
 	users = append(users, vpnUsers...)

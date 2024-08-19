@@ -13,7 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
-	"vpn-web.funcworks.net/model"
+	"vpn-web.funcworks.net/model/login"
 )
 
 var TokenService = &tokenService{
@@ -29,7 +29,7 @@ type tokenService struct {
 }
 
 // 从缓存中获取已登录用户
-func (s *tokenService) GetLoginUser(ctx *gin.Context) (*model.LoginUser, error) {
+func (s *tokenService) GetLoginUser(ctx *gin.Context) (*login.LoginUser, error) {
 	// 从 request 中提取 token
 	tokenString, err := s.getToken(ctx)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *tokenService) GetLoginUser(ctx *gin.Context) (*model.LoginUser, error) 
 	}
 
 	// 转换为 LoginUser
-	var user model.LoginUser
+	var user login.LoginUser
 	if err = json.Unmarshal([]byte(info), &user); err != nil {
 		return nil, errors.Wrap(err, "将用户缓存信息转换为 LoginUser 对象失败")
 	}
@@ -93,7 +93,7 @@ func (s *tokenService) parseToken(tokenString string) (*jwt.Token, error) {
 }
 
 // 创建登录用户token，并将登录用户信息缓存
-func (s *tokenService) CreateToken(loginUser *model.LoginUser) (string, error) {
+func (s *tokenService) CreateToken(loginUser *login.LoginUser) (string, error) {
 	loginUser.Token = uuid.NewString()
 	loginUser.LoginTime = time.Now().UnixMilli()
 
@@ -125,7 +125,7 @@ func (s *tokenService) getTokenKey(uuid string) string {
 }
 
 // 校验 token 是否快过期，提前 10分钟进行续约
-func (s *tokenService) VerifyToken(loginUser *model.LoginUser) {
+func (s *tokenService) VerifyToken(loginUser *login.LoginUser) {
 	// 过期时间少于10分钟时续约 token
 	if loginUser.ExpireTime-time.Now().UnixMilli() < 10*60*1000 {
 		s.RefreshToken(loginUser)
@@ -133,7 +133,7 @@ func (s *tokenService) VerifyToken(loginUser *model.LoginUser) {
 }
 
 // 更新登录用户信息缓存保留时长
-func (s *tokenService) RefreshToken(loginUser *model.LoginUser) error {
+func (s *tokenService) RefreshToken(loginUser *login.LoginUser) error {
 	if loginUser.LoginTime == 0 {
 		loginUser.LoginTime = time.Now().UnixMilli()
 	}
