@@ -288,10 +288,8 @@ func (ms *menuService) GetMenuList(menu *entity.SysMenu) ([]entity.SysMenu, erro
 
 func (ms *menuService) GetMenu(menuId int64) (*entity.SysMenu, error) {
 	var menu entity.SysMenu
-	if exist, err := gb.DB.Table("sys_menu").Where("menu_id = ?", menuId).Get(&menu); err != nil {
+	if exist, err := gb.DB.Table("sys_menu").Where("menu_id = ?", menuId).Get(&menu); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 	return &menu, nil
 }

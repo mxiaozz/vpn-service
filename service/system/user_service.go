@@ -91,10 +91,8 @@ func (us *userService) GetSysUserById(userId int64, isWithExtInfo bool) (*entity
 
 func (us *userService) selectUser(wh map[string]any, isWithExtInfo bool) (*entity.SysUser, error) {
 	var user entity.SysUser
-	if exist, err := gb.DB.Select("*").Where(wh).Desc("create_time").Limit(1).Get(&user); err != nil {
+	if exist, err := gb.DB.Select("*").Where(wh).Desc("create_time").Limit(1).Get(&user); err != nil || !exist {
 		return nil, errors.Wrap(err, "读取用户信息失败")
-	} else if !exist {
-		return nil, nil
 	}
 
 	if isWithExtInfo {

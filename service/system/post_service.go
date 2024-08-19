@@ -43,10 +43,8 @@ func (ps *postService) GetUserPostList(userId int64) ([]entity.SysPost, error) {
 
 func (ps *postService) GetPost(postId int64) (*entity.SysPost, error) {
 	var post entity.SysPost
-	if exist, err := gb.DB.Where("post_id = ?", postId).Get(&post); err != nil {
+	if exist, err := gb.DB.Where("post_id = ?", postId).Get(&post); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 	return &post, nil
 }

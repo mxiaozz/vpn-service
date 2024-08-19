@@ -32,10 +32,8 @@ func (jls *jobLogService) GetJobLogListPage(jobLog *entity.SysJobLog, page *mode
 
 func (jls *jobLogService) GetJobLog(jobLogId int64) (*entity.SysJobLog, error) {
 	var job entity.SysJobLog
-	if exist, err := gb.DB.Where("job_log_id = ?", jobLogId).Get(&job); err != nil {
+	if exist, err := gb.DB.Where("job_log_id = ?", jobLogId).Get(&job); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 	return &job, nil
 }

@@ -76,10 +76,8 @@ func (rs *roleService) GetRoleListPage(role *entity.SysRole, page *model.Page[en
 // 获取角色信息（角色不存在时返回 nil）
 func (rs *roleService) GetRole(roleId int64) (*entity.SysRole, error) {
 	var role entity.SysRole
-	if exist, err := gb.DB.Table("sys_role").Where("role_id = ?", roleId).Get(&role); err != nil {
+	if exist, err := gb.DB.Table("sys_role").Where("role_id = ?", roleId).Get(&role); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 	return &role, nil
 }

@@ -34,10 +34,8 @@ func (js *jobService) GetJobListPage(job *entity.SysJob, page *model.Page[entity
 
 func (js *jobService) GetJob(jobId int64) (*entity.SysJob, error) {
 	var job entity.SysJob
-	if exist, err := gb.DB.Where("job_id = ?", jobId).Get(&job); err != nil {
+	if exist, err := gb.DB.Where("job_id = ?", jobId).Get(&job); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 
 	if cronTrigger, err := quartz.NewCronTriggerWithLoc(job.CronExpression, time.Local); err == nil {

@@ -20,10 +20,8 @@ type deptService struct {
 // 获取部门信息，不存在时返回 nil
 func (ds *deptService) GetDept(deptId int64) (*entity.SysDept, error) {
 	var dept entity.SysDept
-	if exist, err := gb.DB.Where("dept_id = ?", deptId).Get(&dept); err != nil {
+	if exist, err := gb.DB.Where("dept_id = ?", deptId).Get(&dept); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 	return &dept, nil
 }

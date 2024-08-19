@@ -40,10 +40,8 @@ func (ds *dictService) GetDictListPage(dict *entity.SysDictType, page *model.Pag
 
 func (ds *dictService) GetDict(dictId int64) (*entity.SysDictType, error) {
 	var dict entity.SysDictType
-	if exist, err := gb.DB.Where("dict_id = ?", dictId).Get(&dict); err != nil {
+	if exist, err := gb.DB.Where("dict_id = ?", dictId).Get(&dict); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 	return &dict, nil
 }

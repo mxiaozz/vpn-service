@@ -49,10 +49,8 @@ func (ds *dictDataService) GetDictDataByType(dictType string) ([]entity.SysDictD
 
 func (ds *dictDataService) GetDictData(dictDataId int64) (*entity.SysDictData, error) {
 	var dictData entity.SysDictData
-	if exist, err := gb.DB.Where("dict_code = ?", dictDataId).Get(&dictData); err != nil {
+	if exist, err := gb.DB.Where("dict_code = ?", dictDataId).Get(&dictData); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 	return &dictData, nil
 }

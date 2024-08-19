@@ -49,10 +49,8 @@ func (cs *configService) GetConfigByKey(configKey string) (string, error) {
 
 func (cs *configService) GetConfig(configId int64) (*entity.SysConfig, error) {
 	var config entity.SysConfig
-	if exist, err := gb.DB.Where("config_id = ?", configId).Get(&config); err != nil {
+	if exist, err := gb.DB.Where("config_id = ?", configId).Get(&config); err != nil || !exist {
 		return nil, err
-	} else if !exist {
-		return nil, nil
 	}
 	return &config, nil
 }
