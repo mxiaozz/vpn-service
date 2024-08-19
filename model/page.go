@@ -43,7 +43,7 @@ func NewPage[T any](ctx *gin.Context) (*Page[T], error) {
 		page.PageSize = 10
 	}
 	page.Offset = (page.PageNum - 1) * page.PageSize
-	page.Rows = make([]T, 0, 0)
+	page.Rows = make([]T, 0)
 
 	// 支持后续流读取
 	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(body))
