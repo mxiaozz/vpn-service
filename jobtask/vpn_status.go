@@ -26,10 +26,6 @@ type openvpnSchedule struct {
 	mgmtUrl   string
 }
 
-func init() {
-	gb.Sched.Registry("refreshVpnStatus", vpnStausSchedule.refreshVpnStatus)
-}
-
 // 定时刷新 OpenVPN 服务状态
 func (os *openvpnSchedule) refreshVpnStatus(params []any, ctx context.Context) (any, error) {
 	gb.Logger.Info("begin refresh openvpn status")

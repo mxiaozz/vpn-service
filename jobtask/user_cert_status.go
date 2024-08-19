@@ -14,10 +14,6 @@ import (
 	"vpn-web.funcworks.net/util"
 )
 
-func init() {
-	gb.Sched.Registry("refreshUserCertStatus", refreshUserCertStatus)
-}
-
 // 更新用户证书有效期剩余天数
 func refreshUserCertStatus(params []any, ctx context.Context) (any, error) {
 	gb.Logger.Info("开始更新用户证书有效期剩余天数")

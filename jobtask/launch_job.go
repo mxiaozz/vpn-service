@@ -7,6 +7,10 @@ import (
 
 // 程序启动时，加载所有定时任务
 func LoadSchedJobs() {
+	// 注册任务
+	registryJob()
+
+	// 加载任务
 	if jobs, err := system.JobService.GetAllJob(); err != nil {
 		gb.Logger.Errorln("任务调度加载所有任务失败", err)
 	} else {
