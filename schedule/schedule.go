@@ -12,6 +12,7 @@ import (
 	"github.com/reugn/go-quartz/quartz"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
+	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
 	"vpn-web.funcworks.net/service/system"
 	"vpn-web.funcworks.net/util"
@@ -89,7 +90,7 @@ func (sm *schedManager) newFunctionJob(jobEntity entity.SysJob) (*quartzJob.Func
 			JobName:      jobEntity.JobName,
 			JobGroup:     jobEntity.JobGroup,
 			InvokeTarget: jobEntity.InvokeTarget,
-			CreateTime:   time.Now(),
+			CreateTime:   model.DateTime(time.Now()),
 		}
 		if rstErr != nil {
 			sysJogLob.Status = cst.SYS_FAIL

@@ -83,7 +83,7 @@ func (c *roleController) AddRole(ctx *gin.Context) {
 
 	// 增补信息
 	role.CreateBy = c.GetLoginUser(ctx).User.UserName
-	role.CreateTime = time.Now()
+	role.CreateTime = model.DateTime(time.Now())
 	role.DelFlag = "0"
 
 	if err := system.RoleService.AddRole(&role); err != nil {
@@ -105,7 +105,7 @@ func (c *roleController) UpdateRole(ctx *gin.Context) {
 
 	// 增补信息
 	role.UpdateBy = c.GetLoginUser(ctx).User.UserName
-	role.UpdateTime = time.Now()
+	role.UpdateTime = model.DateTime(time.Now())
 
 	if err := system.RoleService.UpdateRole(&role); err != nil {
 		gb.Logger.Errorln("修改角色失败", err.Error())

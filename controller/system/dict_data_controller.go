@@ -87,7 +87,7 @@ func (c *dictDataController) AddDictData(ctx *gin.Context) {
 
 	// 增补信息
 	dictData.CreateBy = c.GetLoginUser(ctx).User.UserName
-	dictData.CreateTime = time.Now()
+	dictData.CreateTime = model.DateTime(time.Now())
 	dictData.Status = "0"
 
 	if err := system.DictDataService.AddDictData(&dictData); err != nil {
@@ -108,7 +108,7 @@ func (c *dictDataController) UpdateDictData(ctx *gin.Context) {
 
 	// 增补信息
 	dictData.UpdateBy = c.GetLoginUser(ctx).User.UserName
-	dictData.UpdateTime = time.Now()
+	dictData.UpdateTime = model.DateTime(time.Now())
 
 	if err := system.DictDataService.UpdateDictData(&dictData); err != nil {
 		gb.Logger.Errorln("修改字典值失败", err.Error())

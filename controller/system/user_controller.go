@@ -124,7 +124,7 @@ func (c *userController) AddUser(ctx *gin.Context) {
 
 	// 增补信息
 	user.CreateBy = c.GetLoginUser(ctx).User.UserName
-	user.CreateTime = time.Now()
+	user.CreateTime = model.DateTime(time.Now())
 	user.DelFlag = "0"
 
 	// 数据库增加
@@ -146,7 +146,7 @@ func (c *userController) UpdateUser(ctx *gin.Context) {
 
 	// 增补信息
 	user.UpdateBy = c.GetLoginUser(ctx).User.UserName
-	user.UpdateTime = time.Now()
+	user.UpdateTime = model.DateTime(time.Now())
 
 	if err := system.UserService.UpdateUser(&user); err != nil {
 		gb.Logger.Errorf(err.Error())

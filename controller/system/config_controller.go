@@ -94,7 +94,7 @@ func (c *configController) AddConfig(ctx *gin.Context) {
 
 	// 增补信息
 	config.CreateBy = c.GetLoginUser(ctx).User.UserName
-	config.CreateTime = time.Now()
+	config.CreateTime = model.DateTime(time.Now())
 
 	if err := system.ConfigService.AddConfig(&config); err != nil {
 		gb.Logger.Errorln("增加参数失败", err.Error())
@@ -114,7 +114,7 @@ func (c *configController) UpdateConfig(ctx *gin.Context) {
 
 	// 增补信息
 	config.UpdateBy = c.GetLoginUser(ctx).User.UserName
-	config.UpdateTime = time.Now()
+	config.UpdateTime = model.DateTime(time.Now())
 
 	if err := system.ConfigService.UpdateConfig(&config); err != nil {
 		gb.Logger.Errorln("修参数失败", err.Error())

@@ -1,6 +1,6 @@
 package entity
 
-import "time"
+import "vpn-web.funcworks.net/model"
 
 type SysJob struct {
 	BaseEntity `xorm:"extends"`
@@ -14,5 +14,5 @@ type SysJob struct {
 	Concurrent     string `json:"concurrent" form:"concurrent"`          // 是否并发执行（0允许 1禁止）
 	Status         string `json:"status" form:"status"`                  // 任务状态（0正常 1暂停）
 
-	NextValidTime time.Time `xorm:"-" json:"nextValidTime"`
+	NextValidTime model.DateTime `xorm:"-" json:"nextValidTime"`
 }

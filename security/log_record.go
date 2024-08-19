@@ -11,6 +11,7 @@ import (
 	"github.com/mssola/useragent"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
+	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
 	"vpn-web.funcworks.net/model/login"
 	"vpn-web.funcworks.net/model/request"
@@ -29,7 +30,7 @@ type logContext struct {
 	Browser  string
 	Os       string
 
-	BeginTime time.Time
+	BeginTime model.DateTime
 	CostTime  time.Duration
 
 	UserId   int64
@@ -177,7 +178,7 @@ func doBefore(ext *ExtInfo, ctx *gin.Context) (*logContext, error) {
 	logCtx.ResponseBuffer = writer.body
 
 	// 业务耗时记时开始
-	logCtx.BeginTime = time.Now()
+	logCtx.BeginTime = model.DateTime(time.Now())
 
 	return logCtx, nil
 }
@@ -187,7 +188,7 @@ func doAfter(logCtx *logContext, ctx *gin.Context) {
 		return
 	}
 
-	logCtx.CostTime = time.Since(logCtx.BeginTime)
+	logCtx.CostTime = time.Since(logCtx.BeginTime.Time())
 	logCtx.ResponseBody = logCtx.ResponseBuffer.Bytes()
 	logCtx.ResponseBuffer = nil
 	logCtx.ResponseContentType = ctx.Writer.Header().Get("Content-Type")

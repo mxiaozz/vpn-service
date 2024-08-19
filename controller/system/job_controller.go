@@ -80,7 +80,7 @@ func (c *jobController) AddJob(ctx *gin.Context) {
 
 	// 增补信息
 	job.CreateBy = c.GetLoginUser(ctx).User.UserName
-	job.CreateTime = time.Now()
+	job.CreateTime = model.DateTime(time.Now())
 	job.Status = "1"
 
 	if err := system.JobService.AddJob(&job); err != nil {
@@ -107,7 +107,7 @@ func (c *jobController) UpdateJob(ctx *gin.Context) {
 
 	// 增补信息
 	job.UpdateBy = c.GetLoginUser(ctx).User.UserName
-	job.UpdateTime = time.Now()
+	job.UpdateTime = model.DateTime(time.Now())
 
 	if err := system.JobService.UpdateJob(&job); err != nil {
 		gb.Logger.Errorln("修改任务失败", err.Error())

@@ -74,7 +74,7 @@ func (c *postController) AddPost(ctx *gin.Context) {
 
 	// 增补信息
 	post.CreateBy = c.GetLoginUser(ctx).User.UserName
-	post.CreateTime = time.Now()
+	post.CreateTime = model.DateTime(time.Now())
 
 	if err := system.PostService.AddPost(&post); err != nil {
 		gb.Logger.Errorln("增加岗位失败", err.Error())
@@ -95,7 +95,7 @@ func (c *postController) UpdatePost(ctx *gin.Context) {
 
 	// 增补信息
 	post.UpdateBy = c.GetLoginUser(ctx).User.UserName
-	post.UpdateTime = time.Now()
+	post.UpdateTime = model.DateTime(time.Now())
 
 	if err := system.PostService.UpdatePost(&post); err != nil {
 		gb.Logger.Errorln("修改岗位失败", err.Error())

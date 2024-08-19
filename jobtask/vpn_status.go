@@ -10,8 +10,9 @@ import (
 
 	"github.com/pkg/errors"
 	"vpn-web.funcworks.net/gb"
+	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
-	model "vpn-web.funcworks.net/model/openvpn"
+	vpn "vpn-web.funcworks.net/model/openvpn"
 	service "vpn-web.funcworks.net/service/openvpn"
 	"vpn-web.funcworks.net/util"
 )
@@ -22,7 +23,7 @@ var vpnStausSchedule = &openvpnSchedule{
 }
 
 type openvpnSchedule struct {
-	vpnStatus *model.OpenVpnStatus
+	vpnStatus *vpn.OpenVpnStatus
 	mgmtUrl   string
 }
 
@@ -52,7 +53,7 @@ func (os *openvpnSchedule) refreshVpnStatus(params []any, ctx context.Context) (
 
 // 获取 OpenVPN 服务启动时间
 func (os *openvpnSchedule) handleState() error {
-	obj, err := util.HttpGet[model.MgmtResponse](os.mgmtUrl + "/state")
+	obj, err := util.HttpGet[vpn.MgmtResponse](os.mgmtUrl + "/state")
 	if err != nil {
 		return errors.Wrap(err, "http获取服务启动时间失败")
 	}
@@ -74,14 +75,14 @@ func (os *openvpnSchedule) handleState() error {
 	if err != nil {
 		return errors.Wrapf(err, "解析服务启动时间失败: %s", dateStr)
 	}
-	os.vpnStatus.StartTime = time.Unix(timestamp, 0)
+	os.vpnStatus.StartTime = model.DateTime(time.Unix(timestamp, 0))
 
 	return nil
 }
 
 // 获取服务状态 和 当前在线用户
 func (os *openvpnSchedule) handleOnlineUsers() error {
-	obj, err := util.HttpGet[model.MgmtResponse](os.mgmtUrl + "/status")
+	obj, err := util.HttpGet[vpn.MgmtResponse](os.mgmtUrl + "/status")
 	if err != nil {
 		return errors.Wrap(err, "http获取当前在线用户失败")
 	}
@@ -138,11 +139,11 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 			}
 
 			dateStr := array[1]
-			date, err := time.Parse("2006-01-02 15:04:05", dateStr)
+			date, err := time.ParseInLocation("2006-01-02 15:04:05", dateStr, time.Local)
 			if err != nil {
 				return errors.Wrapf(err, "解析服务器当前时间失败: %s", dateStr)
 			}
-			os.vpnStatus.Duration = util.TimeDistance(date, os.vpnStatus.StartTime)
+			os.vpnStatus.Duration = util.TimeDistance(date, os.vpnStatus.StartTime.Time())
 			statusFlag = false
 		}
 
@@ -161,7 +162,7 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 			if err != nil {
 				return errors.Wrapf(err, "解析用户接受数据量失败: %s", array[3])
 			}
-			loginTime, err := time.Parse("2006-01-02 15:04:05", array[4])
+			loginTime, err := time.ParseInLocation("2006-01-02 15:04:05", array[4], time.Local)
 			if err != nil {
 				return errors.Wrapf(err, "解析用户登录时间失败: %s", array[4])
 			}
@@ -170,7 +171,7 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 				Ipaddr:    strings.Split(array[1], ":")[0],
 				Browser:   util.HumanByteSize(sizeSend),
 				Os:        util.HumanByteSize(sizeReceive),
-				LoginTime: loginTime,
+				LoginTime: model.DateTime(loginTime),
 				Msg:       util.TimeDistance(time.Now(), loginTime),
 			}
 			if os.vpnStatus.OnlineUsers == nil {

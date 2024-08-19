@@ -40,7 +40,7 @@ func (js *jobService) GetJob(jobId int64) (*entity.SysJob, error) {
 
 	if cronTrigger, err := quartz.NewCronTriggerWithLoc(job.CronExpression, time.Local); err == nil {
 		if next, err := cronTrigger.NextFireTime(time.Now().UTC().UnixNano()); err == nil {
-			job.NextValidTime = time.Unix(next/int64(time.Second), 0)
+			job.NextValidTime = model.DateTime(time.Unix(next/int64(time.Second), 0))
 		}
 	}
 

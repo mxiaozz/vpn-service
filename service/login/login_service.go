@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
+	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
 	"vpn-web.funcworks.net/model/login"
 	"vpn-web.funcworks.net/model/request"
@@ -138,7 +139,7 @@ func (us *loginService) updateLoginInfo(userId int64, clientIp string) {
 	user := &entity.SysUser{
 		UserId:    userId,
 		LoginIp:   clientIp,
-		LoginDate: time.Now(),
+		LoginDate: model.DateTime(time.Now()),
 	}
 	if err := system.UserService.UpdateUserLoginInfo(user); err != nil {
 		gb.Logger.Error("更新登录信息失败", err)

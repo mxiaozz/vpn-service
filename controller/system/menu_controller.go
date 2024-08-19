@@ -8,6 +8,7 @@ import (
 	"vpn-web.funcworks.net/controller"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
+	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
 	"vpn-web.funcworks.net/service/system"
 	"vpn-web.funcworks.net/util"
@@ -74,7 +75,7 @@ func (c *menuController) AddMenu(ctx *gin.Context) {
 
 	loginUser := c.GetLoginUser(ctx)
 	menu.CreateBy = loginUser.User.UserName
-	menu.CreateTime = time.Now()
+	menu.CreateTime = model.DateTime(time.Now())
 
 	if err := system.MenuService.AddMenu(&menu); err != nil {
 		gb.Logger.Errorf(err.Error())
@@ -104,7 +105,7 @@ func (c *menuController) UpdateMenu(ctx *gin.Context) {
 
 	loginUser := c.GetLoginUser(ctx)
 	menu.UpdateBy = loginUser.User.UserName
-	menu.UpdateTime = time.Now()
+	menu.UpdateTime = model.DateTime(time.Now())
 
 	if err := system.MenuService.UpdateMenu(&menu); err != nil {
 		gb.Logger.Errorf(err.Error())

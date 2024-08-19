@@ -15,31 +15,32 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap/buffer"
 	"vpn-web.funcworks.net/gb"
+	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
-	model "vpn-web.funcworks.net/model/openvpn"
+	vpn "vpn-web.funcworks.net/model/openvpn"
 	"vpn-web.funcworks.net/service/system"
 	"vpn-web.funcworks.net/util"
 )
 
 var OpenvpnService = &openvpnService{
-	VpnStatus: &model.OpenVpnStatus{
+	VpnStatus: &vpn.OpenVpnStatus{
 		Status:          "未知",
-		LastUpdatedTime: time.Now(),
+		LastUpdatedTime: model.DateTime(time.Now()),
 	},
 	mgmtUrl: gb.Viper.GetString("openvpn.mgmtUrl"),
 }
 
 type openvpnService struct {
-	VpnStatus *model.OpenVpnStatus
+	VpnStatus *vpn.OpenVpnStatus
 	mgmtUrl   string
 }
 
-func (os *openvpnService) GetServerStatus() *model.OpenVpnStatus {
+func (os *openvpnService) GetServerStatus() *vpn.OpenVpnStatus {
 	return os.VpnStatus
 }
 
-func (os *openvpnService) GetRealtimeStatus() *model.OpenVpnStatus {
-	status := &model.OpenVpnStatus{Status: "未知"}
+func (os *openvpnService) GetRealtimeStatus() *vpn.OpenVpnStatus {
+	status := &vpn.OpenVpnStatus{Status: "未知"}
 
 	err := os.HandleServerStatus()
 	if err == nil {
@@ -224,15 +225,15 @@ func (os *openvpnService) ResetPKI() error {
 }
 
 // 获取用户证书
-func (os *openvpnService) GetUserCert(userName string, isWithCert bool) (*model.UserCert, error) {
-	obj, err := util.HttpSend[model.UserCert]("get", os.mgmtUrl+"/getClientCert?name="+userName, nil)
+func (os *openvpnService) GetUserCert(userName string, isWithCert bool) (*vpn.UserCert, error) {
+	obj, err := util.HttpSend[vpn.UserCert]("get", os.mgmtUrl+"/getClientCert?name="+userName, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "http获取用户证书失败")
 	}
 
 	// 2001：证书未注册
 	if obj.Code == 2001 {
-		return &model.UserCert{}, nil
+		return &vpn.UserCert{}, nil
 	} else if obj.Code != 0 {
 		return nil, errors.Wrap(errors.New(obj.Msg), "获取用户证书失败")
 	}
@@ -274,9 +275,9 @@ func (os *openvpnService) GetUserCert(userName string, isWithCert bool) (*model.
 		return nil, errors.Wrap(err, "用户证书x509解析失败")
 	}
 	userCert.Name = cert.Subject.CommonName
-	userCert.BeginTime = cert.NotBefore
-	userCert.EndTime = cert.NotAfter
-	userCert.Durtion = fmt.Sprintf("%d 天", util.DiffDays(userCert.EndTime, time.Now()))
+	userCert.BeginTime = model.DateTime(cert.NotBefore)
+	userCert.EndTime = model.DateTime(cert.NotAfter)
+	userCert.Durtion = fmt.Sprintf("%d 天", util.DiffDays(userCert.EndTime.Time(), time.Now()))
 	if cert.NotAfter.After(time.Now()) {
 		userCert.Status = "有效"
 	} else {
@@ -288,8 +289,8 @@ func (os *openvpnService) GetUserCert(userName string, isWithCert bool) (*model.
 
 	gb.Logger.Infof("%s period: %s ~ %s, %s",
 		userCert.Name,
-		userCert.BeginTime.Format("2006-01-02 15:04:05"),
-		userCert.EndTime.Format("2006-01-02 15:04:05"),
+		userCert.BeginTime.String(),
+		userCert.EndTime.String(),
 		userCert.Durtion)
 
 	return &userCert, nil
@@ -339,7 +340,7 @@ func (os *openvpnService) KickOut(userName string) error {
 	gb.Logger.Infof("begin kick out user: %s", userName)
 	data := make(map[string]any, 0)
 	data["name"] = userName
-	if obj, err := util.HttpPost[model.MgmtResponse](os.mgmtUrl+"/killClient", data); err != nil {
+	if obj, err := util.HttpPost[vpn.MgmtResponse](os.mgmtUrl+"/killClient", data); err != nil {
 		return errors.Wrap(err, "强退VPN用户失败")
 	} else {
 		gb.Logger.Infof("kick out %s %s", userName, obj.Rsp)
