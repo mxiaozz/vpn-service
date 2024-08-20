@@ -123,6 +123,17 @@ func saveOperLog(ctx *logContext) {
 		OperTime:      ctx.BeginTime,
 		Status:        util.If(code == cst.HTTP_SUCCESS, 0, 1),
 	}
+	if len(ctx.RequestBody) > 1024 {
+		operLog.OperParam = string(ctx.RequestBody[:1024])
+	} else {
+		operLog.OperParam = string(ctx.RequestBody)
+	}
+	if len(ctx.ResponseBody) > 1024 {
+		operLog.JsonResult = string(ctx.ResponseBody[:1024])
+	} else {
+		operLog.JsonResult = string(ctx.ResponseBody)
+	}
+
 	switch ctx.Method {
 	case "POST":
 		operLog.BusinessType = 1
