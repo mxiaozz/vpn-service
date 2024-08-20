@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -59,7 +60,7 @@ func (lc *localCache) Get(ctx context.Context, key string) *redis.StringCmd {
 }
 
 func (lc *localCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
-	lc.cache.Set(key, value, expiration)
+	lc.cache.Set(key, fmt.Sprint(value), expiration)
 	return redis.NewStatusCmd(ctx)
 }
 
