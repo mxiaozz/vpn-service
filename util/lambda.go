@@ -17,7 +17,7 @@ func (list List[T]) ForEach(action func(t T)) {
 }
 
 func (list List[T]) Filter(predicate func(t T) bool) List[T] {
-	newList := make(List[T], 0)
+	newList := make(List[T], 0, min(8, len(list)))
 	for _, v := range list {
 		if predicate(v) {
 			newList = append(newList, v)
@@ -35,7 +35,7 @@ func (list List[T]) Distinct(genKey func(t T) any) List[T] {
 		}
 	}
 
-	newList := make(List[T], 0)
+	newList := make(List[T], 0, len(m))
 	for _, v := range m {
 		newList = append(newList, v)
 	}
@@ -72,7 +72,7 @@ func (list List[T]) MapToStr(mapper func(t T) string) List[string] {
 }
 
 func Convert[T any, R any](list List[T], mapper func(t T) R) List[R] {
-	newList := make(List[R], 0)
+	newList := make(List[R], 0, len(list))
 	for _, v := range list {
 		newList = append(newList, mapper(v))
 	}
