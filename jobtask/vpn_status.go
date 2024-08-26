@@ -53,7 +53,7 @@ func (os *openvpnSchedule) refreshVpnStatus(params []any, ctx context.Context) (
 
 // 获取 OpenVPN 服务启动时间
 func (os *openvpnSchedule) handleState() error {
-	obj, err := util.HttpGet[vpn.MgmtResponse](os.mgmtUrl + "/state")
+	obj, err := util.HttpVpnGet[vpn.MgmtResponse](os.mgmtUrl + "/state")
 	if err != nil {
 		return errors.Wrap(err, "http获取服务启动时间失败")
 	}
@@ -82,7 +82,7 @@ func (os *openvpnSchedule) handleState() error {
 
 // 获取服务状态 和 当前在线用户
 func (os *openvpnSchedule) handleOnlineUsers() error {
-	obj, err := util.HttpGet[vpn.MgmtResponse](os.mgmtUrl + "/status")
+	obj, err := util.HttpVpnGet[vpn.MgmtResponse](os.mgmtUrl + "/status")
 	if err != nil {
 		return errors.Wrap(err, "http获取当前在线用户失败")
 	}

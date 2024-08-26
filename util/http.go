@@ -2,46 +2,74 @@ package util
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
-
-	"vpn-web.funcworks.net/model"
+	"unsafe"
 )
 
 type HttpOptionFunc func(*http.Client, *http.Request)
 
-func HttpGet[T any](url string) (*T, error) {
-	obj, err := HttpSend[T]("get", url, nil)
+func HttpSend[T any](method, url string, data map[string]any, optionFuncs ...HttpOptionFunc) (T, error) {
+	var rsp T
+
+	// request
+	req, err := newRequest(strings.ToUpper(method), url, data)
 	if err != nil {
-		return nil, err
+		return rsp, err
 	}
-	if obj.Code != 0 {
-		return nil, errors.New(obj.Msg)
+	client := &http.Client{Timeout: 20 * time.Second}
+
+	// 额外配置
+	for _, config := range optionFuncs {
+		config(client, req)
 	}
-	return &obj.Data, nil
+
+	// response
+	response, err := client.Do(req)
+	if err != nil {
+		return rsp, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return rsp, err
+	}
+
+	// 返回值
+	switch any(rsp).(type) {
+	case []byte:
+		return any(body).(T), nil
+	case string:
+		return any(string(body)).(T), nil
+	case *string:
+		s := (*string)(unsafe.Pointer(&body))
+		return any(s).(T), nil
+	default:
+		typ := reflect.TypeOf(rsp)
+		if typ.Kind() == reflect.Ptr {
+			v := reflect.New(typ.Elem()).Interface()
+			rsp = v.(T)
+			if err = json.Unmarshal(body, rsp); err != nil {
+				return rsp, err
+			}
+		} else {
+			if err = json.Unmarshal(body, &rsp); err != nil {
+				return rsp, err
+			}
+		}
+		return rsp, nil
+	}
 }
 
-func HttpPost[T any](url string, data map[string]any) (*T, error) {
-	obj, err := HttpSend[T]("post", url, data)
-	if err != nil {
-		return nil, err
-	}
-	if obj.Code != 0 {
-		return nil, errors.New(obj.Msg)
-	}
-	return &obj.Data, nil
-}
-
-func HttpSend[T any](method, url string, data map[string]any, optionFuncs ...HttpOptionFunc) (*model.Response[T], error) {
-	var req *http.Request
-	var err error
-
-	if strings.EqualFold(method, "get") {
-		if req, err = http.NewRequest(http.MethodGet, url, nil); err != nil {
+func newRequest(method, url string, data map[string]any) (*http.Request, error) {
+	if method == http.MethodGet {
+		if req, err := http.NewRequest(method, url, nil); err != nil {
 			return nil, err
+		} else {
+			return req, nil
 		}
 	} else {
 		var reader io.Reader
@@ -52,33 +80,11 @@ func HttpSend[T any](method, url string, data map[string]any, optionFuncs ...Htt
 			}
 			reader = strings.NewReader(string(body))
 		}
-		if req, err = http.NewRequest(http.MethodPost, url, reader); err != nil {
+		if req, err := http.NewRequest(method, url, reader); err != nil {
 			return nil, err
+		} else {
+			req.Header.Set("Content-Type", "application/json")
+			return req, nil
 		}
-		req.Header.Set("Content-Type", "application/json")
 	}
-
-	client := &http.Client{Timeout: 20 * time.Second}
-
-	// 额外配置
-	for _, config := range optionFuncs {
-		config(client, req)
-	}
-
-	response, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var obj model.Response[T]
-	if err = json.Unmarshal(body, &obj); err != nil {
-		return nil, err
-	}
-
-	return &obj, nil
 }

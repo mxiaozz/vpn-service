@@ -52,13 +52,13 @@ func (os *openvpnService) GetRealtimeStatus() *vpn.OpenVpnStatus {
 
 // 获取 OpenVPN 进程运行状态
 func (os *openvpnService) HandleServerStatus() error {
-	data, err := util.HttpGet[string](os.mgmtUrl + "/serverStatus")
+	data, err := util.HttpVpnGet[string](os.mgmtUrl + "/serverStatus")
 	if err != nil {
 		return errors.Wrap(err, "http获取OpenVpn服务进程状态失败")
 	}
-	gb.Logger.Debugf("server status: %s", *data)
+	gb.Logger.Debugf("server status: %s", data)
 
-	switch *data {
+	switch data {
 	case "unknown":
 		os.VpnStatus.Status = "未知"
 	case "stopped":
@@ -77,9 +77,9 @@ func (os *openvpnService) ChangeServer(opt string) {
 
 	switch opt {
 	case "start":
-		_, err = util.HttpPost[string](os.mgmtUrl+"/serverStart", nil)
+		_, err = util.HttpVpnPost[string](os.mgmtUrl+"/serverStart", nil)
 	case "stop":
-		_, err = util.HttpPost[string](os.mgmtUrl+"/serverStop", nil)
+		_, err = util.HttpVpnPost[string](os.mgmtUrl+"/serverStop", nil)
 	}
 	if err != nil {
 		gb.Logger.Errorf("changeServer: %s", err.Error())
@@ -90,13 +90,14 @@ func (os *openvpnService) ChangeServer(opt string) {
 }
 
 func (os *openvpnService) GetServerConfig() (string, error) {
-	obj, err := util.HttpSend[string]("get", os.mgmtUrl+"/getConfig", nil)
+	obj, err := util.HttpVpnSend[string]("GET", os.mgmtUrl+"/getConfig", nil)
 	if err != nil {
 		return "", errors.Wrap(err, "http获取OpenVpn服务进程状态失败")
 	}
 	if obj.Code != 0 && obj.Code != 2000 {
 		return "", errors.Wrap(errors.New(obj.Msg), "http获取OpenVpn服务进程状态失败")
 	}
+
 	return obj.Data, nil
 }
 
@@ -111,15 +112,15 @@ func (os *openvpnService) GenerateConfig(param string) (string, error) {
 	// 请求生成配置文件
 	data := make(map[string]any, 0)
 	data["params"] = params
-	if _, err = util.HttpPost[string](os.mgmtUrl+"/genConfig", data); err != nil {
+	if _, err = util.HttpVpnPost[string](os.mgmtUrl+"/genConfig", data); err != nil {
 		return "", errors.Wrap(err, "http请求生成OpenVPN配置失败")
 	}
 
 	// 读取配置文件
-	if cfg, err := util.HttpGet[string](os.mgmtUrl + "/getConfig"); err != nil {
+	if cfg, err := util.HttpVpnGet[string](os.mgmtUrl + "/getConfig"); err != nil {
 		return "", errors.Wrap(err, "生成OpenVPN配置成功后读取配置失败")
 	} else {
-		return *cfg, nil
+		return cfg, nil
 	}
 }
 
@@ -183,32 +184,34 @@ func (os *openvpnService) SaveConfig(cfgContent string) (string, error) {
 	data["content"] = cfgContent
 
 	// 保存配置
-	if _, err := util.HttpPost[string](os.mgmtUrl+"/saveConfig", data); err != nil {
+	if _, err := util.HttpVpnPost[string](os.mgmtUrl+"/saveConfig", data); err != nil {
 		return "", errors.Wrap(err, "http保存OpenVPN配置失败")
 	}
 
 	// 读取配置
-	if cfg, err := util.HttpGet[string](os.mgmtUrl + "/getConfig"); err != nil {
+	if cfg, err := util.HttpVpnGet[string](os.mgmtUrl + "/getConfig"); err != nil {
 		return "", errors.Wrap(err, "保存OpenVPN配置成功后读取失败")
 	} else {
-		return *cfg, nil
+		return cfg, nil
 	}
 }
 
 func (os *openvpnService) GetPKIStatus() (bool, error) {
-	if status, err := util.HttpGet[bool](os.mgmtUrl + "/pkiStatus"); err != nil {
+	if status, err := util.HttpVpnGet[bool](os.mgmtUrl + "/pkiStatus"); err != nil {
 		return false, errors.Wrap(err, "http读取PKI状态失败")
 	} else {
-		return *status, nil
+		return status, nil
 	}
 }
 
 func (os *openvpnService) InikPKI() error {
 	gb.Logger.Info("初始化 OpenVpn PKI")
-	if _, err := util.HttpSend[string]("post", os.mgmtUrl+"/initPKI", nil, func(c *http.Client, r *http.Request) {
+	if rsp, err := util.HttpVpnSend[string]("post", os.mgmtUrl+"/initPKI", nil, func(c *http.Client, r *http.Request) {
 		c.Timeout = 120 * time.Second
 	}); err != nil {
 		return errors.Wrap(err, "http初始化PKI失败")
+	} else if rsp.Code != 0 {
+		return errors.Wrap(errors.New(rsp.Msg), "http初始化PKI失败")
 	}
 	return nil
 }
@@ -216,17 +219,19 @@ func (os *openvpnService) InikPKI() error {
 func (os *openvpnService) ResetPKI() error {
 	gb.Logger.Warn("重置 OpenVpn PKI")
 
-	if _, err := util.HttpSend[string]("post", os.mgmtUrl+"/resetPKI", nil, func(c *http.Client, r *http.Request) {
+	if rsp, err := util.HttpVpnSend[string]("post", os.mgmtUrl+"/resetPKI", nil, func(c *http.Client, r *http.Request) {
 		c.Timeout = 120 * time.Second
 	}); err != nil {
 		return errors.Wrap(err, "http重置PKI失败")
+	} else if rsp.Code != 0 {
+		return errors.Wrap(errors.New(rsp.Msg), "http重置PKI失败")
 	}
 	return nil
 }
 
 // 获取用户证书
 func (os *openvpnService) GetUserCert(userName string, isWithCert bool) (*vpn.UserCert, error) {
-	obj, err := util.HttpSend[vpn.UserCert]("get", os.mgmtUrl+"/getClientCert?name="+userName, nil)
+	obj, err := util.HttpVpnSend[*vpn.UserCert]("GET", os.mgmtUrl+"/getClientCert?name="+userName, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "http获取用户证书失败")
 	}
@@ -293,7 +298,7 @@ func (os *openvpnService) GetUserCert(userName string, isWithCert bool) (*vpn.Us
 		userCert.EndTime.String(),
 		userCert.Durtion)
 
-	return &userCert, nil
+	return userCert, nil
 }
 
 func (os *openvpnService) GenerateUserCert(userName string) error {
@@ -320,7 +325,7 @@ func (os *openvpnService) GenerateUserCert(userName string) error {
 	data := make(map[string]any, 0)
 	data["name"] = userName
 	data["expire"] = expire
-	if _, err := util.HttpPost[string](os.mgmtUrl+"/genClientCert", data); err != nil {
+	if _, err := util.HttpVpnPost[string](os.mgmtUrl+"/genClientCert", data); err != nil {
 		return errors.Wrap(err, "生成用户证书失败")
 	}
 	return nil
@@ -330,7 +335,7 @@ func (os *openvpnService) RevokeUserCert(userName string) error {
 	gb.Logger.Infof("begin revoke user: %s cert", userName)
 	data := make(map[string]any, 0)
 	data["name"] = userName
-	if _, err := util.HttpPost[string](os.mgmtUrl+"/revokeClientCert", data); err != nil {
+	if _, err := util.HttpVpnPost[string](os.mgmtUrl+"/revokeClientCert", data); err != nil {
 		return errors.Wrap(err, "注销用户证书失败")
 	}
 	return nil
@@ -340,7 +345,7 @@ func (os *openvpnService) KickOut(userName string) error {
 	gb.Logger.Infof("begin kick out user: %s", userName)
 	data := make(map[string]any, 0)
 	data["name"] = userName
-	if obj, err := util.HttpPost[vpn.MgmtResponse](os.mgmtUrl+"/killClient", data); err != nil {
+	if obj, err := util.HttpVpnPost[vpn.MgmtResponse](os.mgmtUrl+"/killClient", data); err != nil {
 		return errors.Wrap(err, "强退VPN用户失败")
 	} else {
 		gb.Logger.Infof("kick out %s %s", userName, obj.Rsp)
