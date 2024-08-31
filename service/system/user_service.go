@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -403,18 +402,7 @@ func (us *userService) UpdateOwnerPassword(userId int64, newPassword, oldPasswor
 	return err
 }
 
-func (us *userService) UpdateOwnerAvatar(user login.LoginUser, file *multipart.FileHeader) (string, error) {
-	// 检查文件后缀
-	ext, err := us.checkAvatarFileType(file.Filename)
-	if err != nil {
-		return "", err
-	}
-
-	// 检查文件大小
-	if file.Size > 5*1024*1024 {
-		return "", errors.New("文件大小不能超过5M")
-	}
-
+func (us *userService) UpdateOwnerAvatar(user login.LoginUser, file multipart.File, ext string) (string, error) {
 	// 保存文件
 	filePath, url := us.getAvatarPath(user.UserName, ext)
 	if err := us.saveAvatarFile(filePath, file); err != nil {
@@ -429,21 +417,7 @@ func (us *userService) UpdateOwnerAvatar(user login.LoginUser, file *multipart.F
 	// 删除用户旧头像（尽量减少空间，不做失败处理）
 	us.deleteOldAvatar(filePath)
 
-	return url, err
-}
-
-// 检查文件格式
-func (us *userService) checkAvatarFileType(fileName string) (string, error) {
-	ext := filepath.Ext(fileName)
-	if ext == "" {
-		return "", errors.New("文件格式不正确")
-	}
-	fileTypeList := []string{".png", ".jpg", ".jpeg", ".gif"}
-	if ext, exist := util.NewList(fileTypeList).First(func(t string) bool { return strings.EqualFold(ext, t) }); !exist {
-		return "", errors.New("文件格式需为: png/jpg/jpeg/gif")
-	} else {
-		return ext, nil
-	}
+	return url, nil
 }
 
 func (us *userService) getAvatarPath(userName, ext string) (path, url string) {
@@ -454,18 +428,11 @@ func (us *userService) getAvatarPath(userName, ext string) (path, url string) {
 	return
 }
 
-func (us *userService) saveAvatarFile(filePath string, file *multipart.FileHeader) error {
+func (us *userService) saveAvatarFile(filePath string, srcfile multipart.File) error {
 	// 创建目录
 	if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
 		return err
 	}
-
-	// 原文件
-	srcfile, err := file.Open()
-	if err != nil {
-		return err
-	}
-	defer srcfile.Close()
 
 	// 目标文件
 	tgtFile, err := os.Create(filePath)

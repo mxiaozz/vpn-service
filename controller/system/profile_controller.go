@@ -1,6 +1,8 @@
 package system
 
 import (
+	"errors"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -92,18 +94,48 @@ func (c *profileController) UpdateOwnerPassword(ctx *gin.Context) {
 }
 
 func (c *profileController) UpdateOwnerAvatar(ctx *gin.Context) {
-	_, header, err := ctx.Request.FormFile("file")
+	file, header, err := ctx.Request.FormFile("file")
 	if err != nil {
 		gb.Logger.Errorln("文件上传", err)
 		rsp.Fail("文件上传失败", ctx)
 		return
 	}
+	defer file.Close()
+
+	// 检查文件后缀
+	ext, err := c.checkAvatarFileType(header.Filename)
+	if err != nil {
+		gb.Logger.Errorln("头像文件", err.Error())
+		rsp.Fail(err.Error(), ctx)
+		return
+	}
+
+	// 检查文件大小
+	if header.Size > 5*1024*1024 {
+		gb.Logger.Errorln("头像文件超过5M")
+		rsp.Fail("文件大小不能超过5M", ctx)
+		return
+	}
 
 	loginUser := c.GetLoginUser(ctx)
-	if url, err := system.UserService.UpdateOwnerAvatar(loginUser, header); err != nil {
+	if url, err := system.UserService.UpdateOwnerAvatar(loginUser, file, ext); err != nil {
 		gb.Logger.Errorln("修改个人头像失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
 		rsp.Context(ctx).Flat().OkWithData(gin.H{"imgUrl": url})
+	}
+}
+
+// 检查文件格式
+func (c *profileController) checkAvatarFileType(fileName string) (string, error) {
+	ext := filepath.Ext(fileName)
+	if ext == "" {
+		return "", errors.New("文件格式不正确")
+	}
+	fileTypeList := []string{".png", ".jpg", ".jpeg", ".gif"}
+	if ext, exist := util.NewList(fileTypeList).First(func(t string) bool { return strings.EqualFold(ext, t) }); !exist {
+		return "", errors.New("文件格式需为: png/jpg/jpeg/gif")
+	} else {
+		return ext, nil
 	}
 }
