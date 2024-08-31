@@ -303,10 +303,10 @@ func (os *openvpnService) GetUserCert(userName string, isWithCert bool) (*vpn.Us
 
 func (os *openvpnService) GenerateUserCert(userName string) error {
 	// 检查是否是系统用户
-	if user, err := system.UserService.GetSysUser(userName, false); err != nil {
-		return errors.Wrap(err, "生成用户证书查询用户失败")
-	} else if user == nil {
+	if _, err := system.UserService.GetSysUser(userName, false); errors.Is(err, gb.ErrNotFound) {
 		return errors.New("用户: " + userName + " 不存在，无法签发证书")
+	} else if err != nil {
+		return errors.Wrap(err, "生成用户证书查询用户失败")
 	}
 
 	// 从库中读取有效期时长参数

@@ -47,12 +47,12 @@ func (c *loginLogController) GetLoginLogListPage(ctx *gin.Context) {
 
 	// 非管理员只能查看个人日志
 	loginUser := c.GetLoginUser(ctx)
-	if !loginUser.User.IsAdmin() {
-		loginLog.UserName = loginUser.User.UserName
+	if !loginUser.IsAdmin() {
+		loginLog.UserName = loginUser.UserName
 	}
 
 	// 分页查询
-	if err = monitor.LoginLogService.GetLoginLogListPage(&loginLog, page); err != nil {
+	if err = monitor.LoginLogService.GetLoginLogListPage(loginLog, page); err != nil {
 		gb.Logger.Errorln("登录日志列表查询失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {

@@ -24,7 +24,7 @@ func (us *userService) GetAllUsers() ([]entity.SysUser, error) {
 }
 
 // 用户管理（搜索/分页）
-func (us *userService) GetUserListPage(user *entity.SysUser, page *model.Page[*entity.SysUser]) error {
+func (us *userService) GetUserListPage(user entity.SysUser, page *model.Page[entity.SysUser]) error {
 	err := gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, u.valid_day").
 			From("sys_user", "u").
@@ -55,19 +55,20 @@ func (us *userService) GetUserListPage(user *entity.SysUser, page *model.Page[*e
 	}
 
 	// 加载部门信息
-	list := util.NewList(page.Rows).
-		MapToInt64(func(user *entity.SysUser) int64 { return user.DeptId }).
+	deptIds := util.NewList(page.Rows).
+		MapToInt64(func(user entity.SysUser) int64 { return user.DeptId }).
 		Distinct(func(deptId int64) any { return deptId })
-	depts, err := DeptService.GetDepts(list...)
+	depts, err := DeptService.GetDepts(deptIds...)
 	if err != nil {
 		return err
 	}
-	util.NewList(page.Rows).ForEach(func(user *entity.SysUser) {
-		deptList := util.NewList(depts).Filter(func(dept entity.SysDept) bool { return dept.DeptId == user.DeptId })
-		if deptList.Count() > 0 {
-			user.Dept = &deptList[0]
+	for i, user := range page.Rows {
+		if dept, found := util.NewList(depts).First(func(dept entity.SysDept) bool {
+			return dept.DeptId == user.DeptId
+		}); found {
+			page.Rows[i].Dept = dept
 		}
-	})
+	}
 
 	return nil
 }
@@ -80,36 +81,39 @@ func (us *userService) GetSysUsers(userIds []int64) ([]entity.SysUser, error) {
 }
 
 // 获取用户信息，isWithExtInfo=true 包含部门和角色列表（用户不存在时返回 nil）
-func (us *userService) GetSysUser(userName string, isWithExtInfo bool) (*entity.SysUser, error) {
+func (us *userService) GetSysUser(userName string, isWithExtInfo bool) (entity.SysUser, error) {
 	return us.selectUser(map[string]any{"user_name": userName}, isWithExtInfo)
 }
 
 // 获取用户信息，isWithExtInfo=true 包含部门和角色列表（用户不存在时返回 nil）
-func (us *userService) GetSysUserById(userId int64, isWithExtInfo bool) (*entity.SysUser, error) {
+func (us *userService) GetSysUserById(userId int64, isWithExtInfo bool) (entity.SysUser, error) {
 	return us.selectUser(map[string]any{"user_id": userId}, isWithExtInfo)
 }
 
-func (us *userService) selectUser(wh map[string]any, isWithExtInfo bool) (*entity.SysUser, error) {
+func (us *userService) selectUser(wh map[string]any, isWithExtInfo bool) (entity.SysUser, error) {
 	var user entity.SysUser
-	if exist, err := gb.DB.Select("*").Where(wh).Desc("create_time").Limit(1).Get(&user); err != nil || !exist {
-		return nil, errors.Wrap(err, "读取用户信息失败")
+	if exist, err := gb.DB.Select("*").Where(wh).Desc("create_time").Limit(1).Get(&user); err != nil {
+		return user, errors.Wrap(err, "读取用户信息失败")
+	} else if !exist {
+		return user, errors.Wrap(gb.ErrNotFound, "用户不存在")
 	}
 
 	if isWithExtInfo {
 		if err := us.getUserExtInfo(&user); err != nil {
-			return nil, err
+			return user, err
 		}
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (us *userService) getUserExtInfo(user *entity.SysUser) error {
 	dept, err := DeptService.GetDept(user.DeptId)
-	if err != nil {
+	if err != nil && !errors.Is(err, gb.ErrNotFound) {
 		return errors.Wrap(err, "读取用户部门信息失败")
+	} else {
+		user.Dept = dept
 	}
-	user.Dept = dept
 
 	roles, err := RoleService.GetUserRoles(user.UserId)
 	if err != nil {
@@ -120,13 +124,13 @@ func (us *userService) getUserExtInfo(user *entity.SysUser) error {
 }
 
 // 更新用户证书剩余有效期
-func (us *userService) UpdateUserCertValidDay(user *entity.SysUser) error {
+func (us *userService) UpdateUserCertValidDay(user entity.SysUser) error {
 	_, err := gb.DB.Cols("valid_day").Where("user_name = ?", user.UserName).Update(user)
 	return err
 }
 
 // 增加用户（包含关联岗位/角色）
-func (us *userService) AddUser(user *entity.SysUser) error {
+func (us *userService) AddUser(user entity.SysUser) error {
 	// 加密密码
 	pdata, _ := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	user.Password = string(pdata)
@@ -162,8 +166,8 @@ func (us *userService) UpdateUserLoginInfo(user *entity.SysUser) error {
 }
 
 // 更新用户信息（包含关联岗位/角色）
-func (us *userService) UpdateUser(user *entity.SysUser) error {
-	if util.IsAdminId(user.UserId) {
+func (us *userService) UpdateUser(user entity.SysUser) error {
+	if user.IsAdmin() {
 		return errors.New("不允许修改超级管理员信息")
 	}
 
@@ -258,8 +262,8 @@ func (us *userService) DeleteUser(userIds []int64) error {
 }
 
 // 重置密码
-func (us *userService) ResetPassword(user *entity.SysUser) error {
-	if util.IsAdminId(user.UserId) {
+func (us *userService) ResetPassword(user entity.SysUser) error {
+	if user.IsAdmin() {
 		return errors.New("不允许修改超级管理员密码")
 	}
 
@@ -271,8 +275,8 @@ func (us *userService) ResetPassword(user *entity.SysUser) error {
 }
 
 // 变更状态
-func (us *userService) ChangeStatus(user *entity.SysUser) error {
-	if util.IsAdminId(user.UserId) {
+func (us *userService) ChangeStatus(user entity.SysUser) error {
+	if user.IsAdmin() {
 		return errors.New("不允许修改超级管理员状态")
 	}
 
@@ -298,7 +302,7 @@ func (us *userService) ChangeUserRoles(userId int64, roleIds []int64) error {
 }
 
 // 角色管理，分配用户
-func (us *userService) GetRoleUserPage(roleId int64, user *entity.SysUser, page *model.Page[entity.SysUser]) error {
+func (us *userService) GetRoleUserPage(roleId int64, user entity.SysUser, page *model.Page[entity.SysUser]) error {
 	// 查询语句
 	sql := builder.Dialect(string(gb.DB.Dialect().URI().DBType)).
 		Select("*").From(
@@ -335,13 +339,15 @@ func (us *userService) GetRoleUserPage(roleId int64, user *entity.SysUser, page 
 }
 
 // 角色管理，分配用户
-func (us *userService) GetNotRoleUserPage(roleId int64, user *entity.SysUser, page *model.Page[entity.SysUser]) error {
+func (us *userService) GetNotRoleUserPage(roleId int64, user entity.SysUser, page *model.Page[entity.SysUser]) error {
 	// 查询语句
 	sql := builder.Dialect(string(gb.DB.Dialect().URI().DBType)).
-		Select("*").From("sys_user").Where(builder.Expr("user_id > 1").
+		Select("*").From("sys_user").Where(builder.Expr("user_id > 1"). // 非管理员账号
 		And(builder.NotIn("user_id", builder.Expr(`select u.user_id from sys_user u
-		left join sys_user_role ur on ur.user_id = u.user_id
-		where ur.role_id = ?`, roleId))))
+			left join sys_user_role ur on ur.user_id = u.user_id
+			where ur.role_id = ?`, roleId))).
+		And(builder.If(user.UserName != "", builder.Like{"user_name", user.UserName})).
+		And(builder.If(user.Phonenumber != "", builder.Like{"phonenumber", user.Phonenumber})))
 
 	// 查询总数
 	var err error

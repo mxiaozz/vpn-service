@@ -46,7 +46,7 @@ func (c *configController) GetConfigListPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.ConfigService.GetConfigListPage(&config, page); err != nil {
+	if err = system.ConfigService.GetConfigListPage(config, page); err != nil {
 		gb.Logger.Errorln("角色列表查询失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -93,10 +93,10 @@ func (c *configController) AddConfig(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	config.CreateBy = c.GetLoginUser(ctx).User.UserName
+	config.CreateBy = c.GetLoginUser(ctx).UserName
 	config.CreateTime = model.DateTime(time.Now())
 
-	if err := system.ConfigService.AddConfig(&config); err != nil {
+	if err := system.ConfigService.AddConfig(config); err != nil {
 		gb.Logger.Errorln("增加参数失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -113,10 +113,10 @@ func (c *configController) UpdateConfig(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	config.UpdateBy = c.GetLoginUser(ctx).User.UserName
+	config.UpdateBy = c.GetLoginUser(ctx).UserName
 	config.UpdateTime = model.DateTime(time.Now())
 
-	if err := system.ConfigService.UpdateConfig(&config); err != nil {
+	if err := system.ConfigService.UpdateConfig(config); err != nil {
 		gb.Logger.Errorln("修参数失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {

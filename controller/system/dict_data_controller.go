@@ -39,7 +39,7 @@ func (c *dictDataController) GetDictDataListPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.DictDataService.GetDictDataListPage(&dictData, page); err != nil {
+	if err = system.DictDataService.GetDictDataListPage(dictData, page); err != nil {
 		gb.Logger.Errorln("字典数据列表查询失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -86,11 +86,11 @@ func (c *dictDataController) AddDictData(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	dictData.CreateBy = c.GetLoginUser(ctx).User.UserName
+	dictData.CreateBy = c.GetLoginUser(ctx).UserName
 	dictData.CreateTime = model.DateTime(time.Now())
 	dictData.Status = "0"
 
-	if err := system.DictDataService.AddDictData(&dictData); err != nil {
+	if err := system.DictDataService.AddDictData(dictData); err != nil {
 		gb.Logger.Errorln("增加字典值失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -107,10 +107,10 @@ func (c *dictDataController) UpdateDictData(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	dictData.UpdateBy = c.GetLoginUser(ctx).User.UserName
+	dictData.UpdateBy = c.GetLoginUser(ctx).UserName
 	dictData.UpdateTime = model.DateTime(time.Now())
 
-	if err := system.DictDataService.UpdateDictData(&dictData); err != nil {
+	if err := system.DictDataService.UpdateDictData(dictData); err != nil {
 		gb.Logger.Errorln("修改字典值失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {

@@ -1,6 +1,8 @@
 package gb
 
 import (
+	"errors"
+
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -26,3 +28,6 @@ var RedisClient redis.UniversalClient
 
 // 定时任务
 var Sched SchedManager
+
+// 记录未找到
+var ErrNotFound error = errors.New("record don't exist")

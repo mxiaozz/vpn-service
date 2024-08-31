@@ -42,31 +42,31 @@ func (sm *schedManager) Registry(methodName string, workFunc gb.WorkFuncion) err
 	return nil
 }
 
-func (sm *schedManager) ScheduleJob(jobEntity *entity.SysJob) error {
-	jobKey := sm.getJobKey(jobEntity)
+func (sm *schedManager) ScheduleJob(job gb.SchedJob) error {
+	jobKey := sm.getJobKey(job)
 	if schedJob, _ := sm.sched.GetScheduledJob(jobKey); schedJob != nil {
 		sm.sched.DeleteJob(jobKey)
 	}
-	cronTrigger, err := quartz.NewCronTriggerWithLoc(jobEntity.CronExpression, time.Local)
+	cronTrigger, err := quartz.NewCronTriggerWithLoc(job.CronExpression, time.Local)
 	if err != nil {
 		return err
 	}
-	funcJob, err := sm.newFunctionJob(*jobEntity)
+	funcJob, err := sm.newFunctionJob(job)
 	if err != nil {
 		return err
 	}
 	jobDetail := quartz.NewJobDetail(funcJob, jobKey)
 
-	gb.Logger.Infoln("调度任务:", jobEntity.JobName)
+	gb.Logger.Infoln("调度任务:", job.JobName)
 	return sm.sched.ScheduleJob(jobDetail, cronTrigger)
 }
 
-func (sm *schedManager) getJobKey(jobEntity *entity.SysJob) *quartz.JobKey {
-	return quartz.NewJobKey(fmt.Sprintf("task-%d", jobEntity.JobId))
+func (sm *schedManager) getJobKey(job gb.SchedJob) *quartz.JobKey {
+	return quartz.NewJobKey(fmt.Sprintf("task-%s-%s", job.JobGroup, job.JobId))
 }
 
-func (sm *schedManager) newFunctionJob(jobEntity entity.SysJob) (*quartzJob.FunctionJob[any], error) {
-	methodName, params := sm.parseInvokeMethod(jobEntity.InvokeTarget)
+func (sm *schedManager) newFunctionJob(job gb.SchedJob) (*quartzJob.FunctionJob[any], error) {
+	methodName, params := sm.parseInvokeMethod(job.InvokeTarget)
 	if methodName == "" {
 		return nil, errors.New("methodName: " + methodName + " in job.invokeTarget is empty")
 	}
@@ -86,10 +86,10 @@ func (sm *schedManager) newFunctionJob(jobEntity entity.SysJob) (*quartzJob.Func
 
 		// log
 		stopTime := time.Now()
-		sysJogLob := &entity.SysJobLog{
-			JobName:      jobEntity.JobName,
-			JobGroup:     jobEntity.JobGroup,
-			InvokeTarget: jobEntity.InvokeTarget,
+		sysJogLob := entity.SysJobLog{
+			JobName:      job.JobName,
+			JobGroup:     job.JobGroup,
+			InvokeTarget: job.InvokeTarget,
 			CreateTime:   model.DateTime(time.Now()),
 		}
 		if rstErr != nil {
@@ -98,12 +98,12 @@ func (sm *schedManager) newFunctionJob(jobEntity entity.SysJob) (*quartzJob.Func
 			sysJogLob.Status = cst.SYS_SUCCESS
 		}
 		cost := stopTime.Sub(startTime).Milliseconds()
-		sysJogLob.JobMessage = fmt.Sprintf("%s 总共耗时：%d 毫秒", jobEntity.JobName, cost)
+		sysJogLob.JobMessage = fmt.Sprintf("%s 总共耗时：%d 毫秒", job.JobName, cost)
 		if err := system.JobLogService.AddJobLog(sysJogLob); err != nil {
-			gb.Logger.Errorln("调度任务记录日志失败", jobEntity.JobName, err)
+			gb.Logger.Errorln("调度任务记录日志失败", job.JobName, err)
 		}
 
-		return rstValue, errors.Wrap(rstErr, "调度任务执行失败: "+jobEntity.JobName)
+		return rstValue, errors.Wrap(rstErr, "调度任务执行失败: "+job.JobName)
 	}), nil
 }
 
@@ -157,43 +157,43 @@ func (sm *schedManager) parseInvokeMethod(method string) (string, []any) {
 	})
 }
 
-func (sm *schedManager) PauseJob(jobEntity *entity.SysJob) error {
-	jobKey := sm.getJobKey(jobEntity)
+func (sm *schedManager) PauseJob(job gb.SchedJob) error {
+	jobKey := sm.getJobKey(job)
 	if schedJob, _ := sm.sched.GetScheduledJob(jobKey); schedJob == nil {
 		return nil
 	} else if schedJob.JobDetail().Options().Suspended {
 		return nil
 	}
-	gb.Logger.Infoln("暂定调度任务:" + jobEntity.JobName)
+	gb.Logger.Infoln("暂定调度任务:" + job.JobName)
 	return sm.sched.PauseJob(jobKey)
 }
 
-func (sm *schedManager) ResumeJob(jobEntity *entity.SysJob) error {
-	jobKey := sm.getJobKey(jobEntity)
+func (sm *schedManager) ResumeJob(job gb.SchedJob) error {
+	jobKey := sm.getJobKey(job)
 	if schedJob, _ := sm.sched.GetScheduledJob(jobKey); schedJob == nil {
-		return sm.ScheduleJob(jobEntity)
+		return sm.ScheduleJob(job)
 	} else if schedJob.JobDetail().Options().Suspended {
-		gb.Logger.Infoln("恢复调度任务:" + jobEntity.JobName)
+		gb.Logger.Infoln("恢复调度任务:" + job.JobName)
 		return sm.sched.ResumeJob(jobKey)
 	}
 	return nil
 }
 
-func (sm *schedManager) DeleteJob(jobEntity *entity.SysJob) error {
-	jobKey := sm.getJobKey(jobEntity)
+func (sm *schedManager) DeleteJob(job gb.SchedJob) error {
+	jobKey := sm.getJobKey(job)
 	if schedJob, _ := sm.sched.GetScheduledJob(jobKey); schedJob == nil {
 		return nil
 	} else {
-		gb.Logger.Infoln("删除调度任务:" + jobEntity.JobName)
+		gb.Logger.Infoln("删除调度任务:" + job.JobName)
 		return sm.sched.DeleteJob(jobKey)
 	}
 }
 
-func (sm *schedManager) RunJob(jobEntity *entity.SysJob) error {
-	if workFunc, err := sm.newFunctionJob(*jobEntity); err != nil {
+func (sm *schedManager) RunJob(job gb.SchedJob) error {
+	if workFunc, err := sm.newFunctionJob(job); err != nil {
 		return err
 	} else {
-		gb.Logger.Infoln("执行一次调度任务:" + jobEntity.JobName)
+		gb.Logger.Infoln("执行一次调度任务:" + job.JobName)
 		return workFunc.Execute(context.Background())
 	}
 }

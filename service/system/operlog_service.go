@@ -13,7 +13,7 @@ var OperLogService = &operLogService{}
 type operLogService struct {
 }
 
-func (os *operLogService) GetOperLogListPage(operLog *entity.SysOperLog, page *model.Page[entity.SysOperLog]) error {
+func (os *operLogService) GetOperLogListPage(operLog entity.SysOperLog, page *model.Page[entity.SysOperLog]) error {
 	return gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("*").From("sys_oper_log").
 			Where(builder.If(operLog.OperIp != "", builder.Like{"oper_ip", operLog.OperIp}).
@@ -29,7 +29,7 @@ func (os *operLogService) GetOperLogListPage(operLog *entity.SysOperLog, page *m
 	})
 }
 
-func (os *operLogService) AddOperLog(operLog *entity.SysOperLog) error {
+func (os *operLogService) AddOperLog(operLog entity.SysOperLog) error {
 	_, err := gb.DB.Insert(operLog)
 	return err
 }

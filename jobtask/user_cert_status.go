@@ -45,7 +45,7 @@ func updateUserCertValidDay(userName string, userCert *vpn.UserCert) error {
 	}
 	gb.Logger.Debugf("%s 证书有效期: %s", userName, validDay)
 
-	user := &entity.SysUser{
+	user := entity.SysUser{
 		UserName: userName,
 		ValidDay: validDay,
 	}

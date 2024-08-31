@@ -16,6 +16,16 @@ func (list List[T]) ForEach(action func(t T)) {
 	}
 }
 
+func (list List[T]) First(predicate func(t T) bool) (T, bool) {
+	for _, v := range list {
+		if predicate(v) {
+			return v, true
+		}
+	}
+	var zero T
+	return zero, false
+}
+
 func (list List[T]) Filter(predicate func(t T) bool) List[T] {
 	newList := make(List[T], 0, min(8, len(list)))
 	for _, v := range list {

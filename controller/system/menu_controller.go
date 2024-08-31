@@ -31,11 +31,11 @@ func (c *menuController) GetMenuList(ctx *gin.Context) {
 	}
 
 	loginUser := c.GetLoginUser(ctx)
-	if !util.IsAdminId(loginUser.UserId) {
+	if !loginUser.IsAdmin() {
 		menu.Params["userId"] = loginUser.UserId
 	}
 
-	if menus, err := system.MenuService.GetMenuList(&menu); err != nil {
+	if menus, err := system.MenuService.GetMenuList(menu); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -74,10 +74,10 @@ func (c *menuController) AddMenu(ctx *gin.Context) {
 	}
 
 	loginUser := c.GetLoginUser(ctx)
-	menu.CreateBy = loginUser.User.UserName
+	menu.CreateBy = loginUser.UserName
 	menu.CreateTime = model.DateTime(time.Now())
 
-	if err := system.MenuService.AddMenu(&menu); err != nil {
+	if err := system.MenuService.AddMenu(menu); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -104,10 +104,10 @@ func (c *menuController) UpdateMenu(ctx *gin.Context) {
 	}
 
 	loginUser := c.GetLoginUser(ctx)
-	menu.UpdateBy = loginUser.User.UserName
+	menu.UpdateBy = loginUser.UserName
 	menu.UpdateTime = model.DateTime(time.Now())
 
-	if err := system.MenuService.UpdateMenu(&menu); err != nil {
+	if err := system.MenuService.UpdateMenu(menu); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -133,7 +133,8 @@ func (c *menuController) DeleteMenu(ctx *gin.Context) {
 
 // 角色管理，角色新增时菜单选择框列表
 func (c *menuController) AddRoleMenuTreeSelect(ctx *gin.Context) {
-	if menus, err := system.MenuService.GetRolerMenuTreeSelect(c.GetLoginUser(ctx)); err != nil {
+	loginUser := c.GetLoginUser(ctx)
+	if menus, err := system.MenuService.GetRolerMenuTreeSelect(loginUser); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 		return
@@ -150,8 +151,9 @@ func (c *menuController) UpdateRoleMenuTreeSelect(ctx *gin.Context) {
 		return
 	}
 
+	loginUser := c.GetLoginUser(ctx)
 	data := make(map[string]interface{})
-	if menus, err := system.MenuService.GetRolerMenuTreeSelect(c.GetLoginUser(ctx)); err != nil {
+	if menus, err := system.MenuService.GetRolerMenuTreeSelect(loginUser); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 		return

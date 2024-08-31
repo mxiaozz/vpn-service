@@ -43,10 +43,7 @@ func HttpSend[T any](method, url string, data map[string]any, optionFuncs ...Htt
 	case []byte:
 		return any(body).(T), nil
 	case string:
-		return any(string(body)).(T), nil
-	case *string:
-		s := (*string)(unsafe.Pointer(&body))
-		return any(s).(T), nil
+		return any(unsafe.String(unsafe.SliceData(body), len(body))).(T), nil
 	default:
 		typ := reflect.TypeOf(rsp)
 		if typ.Kind() == reflect.Ptr {
@@ -78,7 +75,7 @@ func newRequest(method, url string, data map[string]any) (*http.Request, error) 
 			if err != nil {
 				return nil, err
 			}
-			reader = strings.NewReader(string(body))
+			reader = strings.NewReader(unsafe.String(unsafe.SliceData(body), len(body)))
 		}
 		if req, err := http.NewRequest(method, url, reader); err != nil {
 			return nil, err

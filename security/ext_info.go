@@ -5,10 +5,7 @@ type ExtInfo struct {
 	Perms  []string
 }
 
-func (ext *ExtInfo) Ext(perms ...string) *ExtInfo {
-	if len(perms) == 0 {
-		return ext
-	} else {
-		return &ExtInfo{Module: ext.Module, Perms: perms}
-	}
+func (ext ExtInfo) Ext(perms ...string) ExtInfo {
+	ext.Perms = perms
+	return ext
 }

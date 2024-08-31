@@ -1,6 +1,8 @@
 package security
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/cst"
 	"vpn-web.funcworks.net/gb"
@@ -12,7 +14,7 @@ func JWTAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		loginUser, err := login.TokenService.GetLoginUser(ctx)
 		if err != nil {
-			if ctx.Request.URL.Path == "/logout" {
+			if strings.HasSuffix(ctx.Request.URL.Path, "/logout") {
 				rsp.Ok(ctx)
 			} else {
 				rsp.FailWithCode(cst.HTTP_UNAUTHORIZED, "", ctx)

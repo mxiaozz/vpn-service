@@ -47,7 +47,7 @@ func (c *roleController) GetRoleListPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.RoleService.GetRoleListPage(&role, page); err != nil {
+	if err = system.RoleService.GetRoleListPage(role, page); err != nil {
 		gb.Logger.Errorln("角色列表查询失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -82,11 +82,11 @@ func (c *roleController) AddRole(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	role.CreateBy = c.GetLoginUser(ctx).User.UserName
+	role.CreateBy = c.GetLoginUser(ctx).UserName
 	role.CreateTime = model.DateTime(time.Now())
 	role.DelFlag = "0"
 
-	if err := system.RoleService.AddRole(&role); err != nil {
+	if err := system.RoleService.AddRole(role); err != nil {
 		gb.Logger.Errorln("增加角色失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -104,10 +104,10 @@ func (c *roleController) UpdateRole(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	role.UpdateBy = c.GetLoginUser(ctx).User.UserName
+	role.UpdateBy = c.GetLoginUser(ctx).UserName
 	role.UpdateTime = model.DateTime(time.Now())
 
-	if err := system.RoleService.UpdateRole(&role); err != nil {
+	if err := system.RoleService.UpdateRole(role); err != nil {
 		gb.Logger.Errorln("修改角色失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -147,7 +147,7 @@ func (c *roleController) ChangeStatus(ctx *gin.Context) {
 		return
 	}
 
-	if err := system.RoleService.ChangeStatus(&role); err != nil {
+	if err := system.RoleService.ChangeStatus(role); err != nil {
 		gb.Logger.Errorln("修改角色状态失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -192,7 +192,7 @@ func (c *roleController) ChangeRoleDataScope(ctx *gin.Context) {
 		return
 	}
 
-	if err := system.RoleService.ChangeRoleDataScope(&role); err != nil {
+	if err := system.RoleService.ChangeRoleDataScope(role); err != nil {
 		gb.Logger.Errorln("修改角色数据权限失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -226,7 +226,7 @@ func (c *roleController) GetRoleUserPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.UserService.GetRoleUserPage(roleId, &user, page); err != nil {
+	if err = system.UserService.GetRoleUserPage(roleId, user, page); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -260,7 +260,7 @@ func (c *roleController) GetNotRoleUserPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.UserService.GetNotRoleUserPage(roleId, &user, page); err != nil {
+	if err = system.UserService.GetNotRoleUserPage(roleId, user, page); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {

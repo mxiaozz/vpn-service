@@ -15,7 +15,7 @@ type configService struct {
 }
 
 // 分页查询
-func (cs *configService) GetConfigListPage(config *entity.SysConfig, page *model.Page[entity.SysConfig]) error {
+func (cs *configService) GetConfigListPage(config entity.SysConfig, page *model.Page[entity.SysConfig]) error {
 	return gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("*").From("sys_config").
 			Where(builder.If(config.ConfigName != "", builder.Like{"config_name", config.ConfigName}).
@@ -47,15 +47,17 @@ func (cs *configService) GetConfigByKey(configKey string) (string, error) {
 	}
 }
 
-func (cs *configService) GetConfig(configId int64) (*entity.SysConfig, error) {
+func (cs *configService) GetConfig(configId int64) (entity.SysConfig, error) {
 	var config entity.SysConfig
-	if exist, err := gb.DB.Where("config_id = ?", configId).Get(&config); err != nil || !exist {
-		return nil, err
+	if exist, err := gb.DB.Where("config_id = ?", configId).Get(&config); err != nil {
+		return config, err
+	} else if !exist {
+		return config, errors.Wrap(gb.ErrNotFound, "参数不存在")
 	}
-	return &config, nil
+	return config, nil
 }
 
-func (cs *configService) AddConfig(config *entity.SysConfig) error {
+func (cs *configService) AddConfig(config entity.SysConfig) error {
 	if exist, err := cs.checkConfigKeyUnique(config.ConfigKey, config.ConfigId); err != nil {
 		return err
 	} else if exist {
@@ -66,7 +68,7 @@ func (cs *configService) AddConfig(config *entity.SysConfig) error {
 	return err
 }
 
-func (cs *configService) UpdateConfig(config *entity.SysConfig) error {
+func (cs *configService) UpdateConfig(config entity.SysConfig) error {
 	if exist, err := cs.checkConfigKeyUnique(config.ConfigKey, config.ConfigId); err != nil {
 		return err
 	} else if exist {

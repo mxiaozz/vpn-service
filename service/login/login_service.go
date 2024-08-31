@@ -21,7 +21,7 @@ type loginService struct {
 }
 
 // 用户登录
-func (us *loginService) Login(req *request.LoginRequest) (string, error) {
+func (us *loginService) Login(req request.LoginRequest) (string, error) {
 	gb.Logger.Infof("用户登录：%s", req.Username)
 
 	// 从数据库读取用户
@@ -31,13 +31,13 @@ func (us *loginService) Login(req *request.LoginRequest) (string, error) {
 	}
 
 	// 检查登录错误次数
-	count, err := us.checkLoginedErrCount(sysUser)
+	count, err := us.checkLoginedErrCount(sysUser.UserName)
 	if err != nil {
 		return "", err
 	}
 
 	// 验证密码
-	if err = us.checkPassword(req.Password, count, sysUser); err != nil {
+	if err = us.checkPassword(sysUser.UserName, sysUser.Password, req.Password, count); err != nil {
 		return "", errors.New("用户名或密码错误")
 	}
 	// 以防密码泄露
@@ -51,7 +51,7 @@ func (us *loginService) Login(req *request.LoginRequest) (string, error) {
 	// 访问信息
 	loginUser.IpAddress = req.ClientIp
 	loginUser.Browser = req.Browser
-	loginUser.Os = req.Os
+	loginUser.AgentOS = req.Os
 
 	// 生成登录 token，并缓存用户登录信息
 	if jwtToken, err := TokenService.CreateToken(loginUser); err != nil {
@@ -62,25 +62,22 @@ func (us *loginService) Login(req *request.LoginRequest) (string, error) {
 	}
 }
 
-func (us *loginService) getUserByName(userName string) (*entity.SysUser, error) {
+func (us *loginService) getUserByName(userName string) (entity.SysUser, error) {
 	user, err := system.UserService.GetSysUser(userName, true)
 	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, errors.New("用户不存在")
+		return user, err
 	}
 	if user.Status == cst.USER_STATUS_DISABLE {
-		return nil, errors.New("用户已停用")
+		return user, errors.New("用户已停用")
 	}
 	if user.DelFlag == cst.USER_STATUS_DELETED {
-		return nil, errors.New("用户已被删除")
+		return user, errors.New("用户已被删除")
 	}
 	return user, nil
 }
 
-func (us *loginService) checkLoginedErrCount(user *entity.SysUser) (int, error) {
-	count, err := gb.RedisProxy.GetInt(us.getCacheErrKey(user.UserName))
+func (us *loginService) checkLoginedErrCount(userName string) (int, error) {
+	count, err := gb.RedisProxy.GetInt(us.getCacheErrKey(userName))
 	if err == redis.Nil {
 		count = 0
 	} else if err != nil {
@@ -88,16 +85,16 @@ func (us *loginService) checkLoginedErrCount(user *entity.SysUser) (int, error) 
 	}
 
 	if count >= gb.Config.Login.MaxRetryCount {
-		gb.Logger.With().Warnf("登录用户：%s 密码错误次数超过限制.", user.UserName)
+		gb.Logger.With().Warnf("登录用户：%s 密码错误次数超过限制.", userName)
 		return 0, errors.New("密码错误次数超过限制")
 	}
 
 	return count, nil
 }
 
-func (us *loginService) updateLoginedErrCount(count int, user *entity.SysUser) error {
+func (us *loginService) updateLoginedErrCount(count int, userName string) error {
 	if err := gb.RedisProxy.SetEx(
-		us.getCacheErrKey(user.UserName),
+		us.getCacheErrKey(userName),
 		count,
 		gb.Config.Login.LockTime*60); err != nil {
 		return err
@@ -105,29 +102,30 @@ func (us *loginService) updateLoginedErrCount(count int, user *entity.SysUser) e
 	return nil
 }
 
-func (us *loginService) checkPassword(password string, count int, user *entity.SysUser) error {
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		us.updateLoginedErrCount(count+1, user)
+func (us *loginService) checkPassword(userName, userPassword, password string, count int) error {
+	if err := bcrypt.CompareHashAndPassword([]byte(userPassword), []byte(password)); err != nil {
+		us.updateLoginedErrCount(count+1, userName)
 		return err
 	}
 	if count > 0 {
-		gb.RedisProxy.Delete(us.getCacheErrKey(user.UserName))
+		gb.RedisProxy.Delete(us.getCacheErrKey(userName))
 	}
 	return nil
 }
 
-func (us *loginService) newLoginUser(sysUser *entity.SysUser) (*login.LoginUser, error) {
-	perms, err := system.MenuService.GetMenuPermission(sysUser)
+func (us *loginService) newLoginUser(sysUser entity.SysUser) (login.LoginUser, error) {
+	var loginUser login.LoginUser
+
+	perms, err := system.MenuService.GetMenuPermission(sysUser.UserId)
 	if err != nil {
-		return nil, err
+		return loginUser, err
 	}
 
-	loginUser := &login.LoginUser{
-		UserId:      sysUser.UserId,
-		DeptId:      sysUser.DeptId,
-		User:        sysUser,
-		Permissions: perms,
-	}
+	loginUser.UserId = sysUser.UserId
+	loginUser.UserName = sysUser.UserName
+	loginUser.DeptId = sysUser.DeptId
+	loginUser.DeptName = sysUser.Dept.DeptName
+	loginUser.Permissions = perms
 	return loginUser, nil
 }
 

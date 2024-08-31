@@ -2,8 +2,6 @@ package gb
 
 import (
 	"context"
-
-	"vpn-web.funcworks.net/model/entity"
 )
 
 // 调度任务需实现此接口函数
@@ -14,13 +12,22 @@ type SchedManager interface {
 	// 注册调度任务
 	Registry(methodName string, workFunc WorkFuncion) error
 	// 调度任务
-	ScheduleJob(jobEntity *entity.SysJob) error
+	ScheduleJob(job SchedJob) error
 	// 暂停任务
-	PauseJob(jobEntity *entity.SysJob) error
+	PauseJob(job SchedJob) error
 	// 恢复任务
-	ResumeJob(jobEntity *entity.SysJob) error
+	ResumeJob(job SchedJob) error
 	// 删除任务
-	DeleteJob(jobEntity *entity.SysJob) error
+	DeleteJob(job SchedJob) error
 	// 执行一次任务
-	RunJob(jobEntity *entity.SysJob) error
+	RunJob(job SchedJob) error
+}
+
+// 调度任务
+type SchedJob struct {
+	JobId          string // 任务ID
+	JobName        string // 任务名称
+	JobGroup       string // 任务组
+	InvokeTarget   string // 调用目标
+	CronExpression string // cron表达式
 }

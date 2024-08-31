@@ -52,12 +52,12 @@ func (c *operLogController) GetOperLogListPage(ctx *gin.Context) {
 
 	// 非管理员只能查看个人日志
 	loginUser := c.GetLoginUser(ctx)
-	if !loginUser.User.IsAdmin() {
-		operLog.OperName = loginUser.User.UserName
+	if !loginUser.IsAdmin() {
+		operLog.OperName = loginUser.UserName
 	}
 
 	// 分页查询
-	if err = system.OperLogService.GetOperLogListPage(&operLog, page); err != nil {
+	if err = system.OperLogService.GetOperLogListPage(operLog, page); err != nil {
 		gb.Logger.Errorln("操作日志列表查询失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {

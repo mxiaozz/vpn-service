@@ -1,8 +1,10 @@
 package system
 
 import (
+	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/reugn/go-quartz/quartz"
 	"vpn-web.funcworks.net/gb"
 	"vpn-web.funcworks.net/model"
@@ -21,7 +23,7 @@ func (js *jobService) GetAllJob() ([]entity.SysJob, error) {
 	return jobs, err
 }
 
-func (js *jobService) GetJobListPage(job *entity.SysJob, page *model.Page[entity.SysJob]) error {
+func (js *jobService) GetJobListPage(job entity.SysJob, page *model.Page[entity.SysJob]) error {
 	return gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("*").From("sys_job").
 			Where(builder.If(job.JobName != "", builder.Like{"job_name", job.JobName}).
@@ -32,10 +34,12 @@ func (js *jobService) GetJobListPage(job *entity.SysJob, page *model.Page[entity
 	})
 }
 
-func (js *jobService) GetJob(jobId int64) (*entity.SysJob, error) {
+func (js *jobService) GetJob(jobId int64) (entity.SysJob, error) {
 	var job entity.SysJob
-	if exist, err := gb.DB.Where("job_id = ?", jobId).Get(&job); err != nil || !exist {
-		return nil, err
+	if exist, err := gb.DB.Where("job_id = ?", jobId).Get(&job); err != nil {
+		return job, err
+	} else if !exist {
+		return job, errors.Wrap(gb.ErrNotFound, "任务不存在")
 	}
 
 	if cronTrigger, err := quartz.NewCronTriggerWithLoc(job.CronExpression, time.Local); err == nil {
@@ -44,23 +48,23 @@ func (js *jobService) GetJob(jobId int64) (*entity.SysJob, error) {
 		}
 	}
 
-	return &job, nil
+	return job, nil
 }
 
-func (js *jobService) AddJob(job *entity.SysJob) error {
+func (js *jobService) AddJob(job entity.SysJob) error {
 	if _, err := gb.DB.Insert(job); err != nil {
 		return err
 	}
-	return gb.Sched.ScheduleJob(job)
+	return gb.Sched.ScheduleJob(js.newSchedJob(job))
 }
 
-func (js *jobService) UpdateJob(job *entity.SysJob) error {
+func (js *jobService) UpdateJob(job entity.SysJob) error {
 	if job.Status == "1" {
-		if err := gb.Sched.PauseJob(job); err != nil {
+		if err := gb.Sched.PauseJob(js.newSchedJob(job)); err != nil {
 			return err
 		}
 	} else {
-		if err := gb.Sched.ScheduleJob(job); err != nil {
+		if err := gb.Sched.ScheduleJob(js.newSchedJob(job)); err != nil {
 			return err
 		}
 	}
@@ -68,18 +72,18 @@ func (js *jobService) UpdateJob(job *entity.SysJob) error {
 	return err
 }
 
-func (js *jobService) ChangeStatus(job *entity.SysJob) error {
+func (js *jobService) ChangeStatus(job entity.SysJob) error {
 	dbJob, err := js.GetJob(job.JobId)
 	if err != nil {
 		return err
 	}
 
 	if job.Status == "0" {
-		if err := gb.Sched.ResumeJob(dbJob); err != nil {
+		if err := gb.Sched.ResumeJob(js.newSchedJob(dbJob)); err != nil {
 			return err
 		}
 	} else {
-		if err := gb.Sched.PauseJob(dbJob); err != nil {
+		if err := gb.Sched.PauseJob(js.newSchedJob(dbJob)); err != nil {
 			return err
 		}
 	}
@@ -87,11 +91,11 @@ func (js *jobService) ChangeStatus(job *entity.SysJob) error {
 	return err
 }
 
-func (js *jobService) RunJob(job *entity.SysJob) error {
+func (js *jobService) RunJob(job entity.SysJob) error {
 	if job, err := js.GetJob(job.JobId); err != nil {
 		return err
 	} else {
-		return gb.Sched.RunJob(job)
+		return gb.Sched.RunJob(js.newSchedJob(job))
 	}
 }
 
@@ -99,12 +103,20 @@ func (js *jobService) DeleteJobs(jobIds []int64) error {
 	for _, id := range jobIds {
 		if job, err := js.GetJob(id); err != nil {
 			return err
-		} else if job != nil {
-			if err := gb.Sched.DeleteJob(job); err != nil {
-				return err
-			}
+		} else if err := gb.Sched.DeleteJob(js.newSchedJob(job)); err != nil {
+			return err
 		}
 	}
 	_, err := gb.DB.Table("sys_job").In("job_id", jobIds).Delete()
 	return err
+}
+
+func (js *jobService) newSchedJob(job entity.SysJob) gb.SchedJob {
+	return gb.SchedJob{
+		JobId:          strconv.FormatInt(job.JobId, 10),
+		JobName:        job.JobName,
+		JobGroup:       job.JobGroup,
+		InvokeTarget:   job.InvokeTarget,
+		CronExpression: job.CronExpression,
+	}
 }

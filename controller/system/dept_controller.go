@@ -34,7 +34,7 @@ func (c *deptController) GetDeptList(ctx *gin.Context) {
 		return
 	}
 
-	if depts, err := system.DeptService.GetDeptList(&dept); err != nil {
+	if depts, err := system.DeptService.GetDeptList(dept); err != nil {
 		rsp.Fail(err.Error(), ctx)
 	} else {
 		rsp.OkWithData(depts, ctx)
@@ -64,11 +64,11 @@ func (c *deptController) AddDept(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	dept.CreateBy = c.GetLoginUser(ctx).User.UserName
+	dept.CreateBy = c.GetLoginUser(ctx).UserName
 	dept.CreateTime = model.DateTime(time.Now())
 	dept.DelFlag = "0"
 
-	if err := system.DeptService.AddDept(&dept); err != nil {
+	if err := system.DeptService.AddDept(dept); err != nil {
 		rsp.Fail(err.Error(), ctx)
 	} else {
 		rsp.Ok(ctx)
@@ -98,10 +98,10 @@ func (c *deptController) UpdateDept(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	dept.UpdateBy = c.GetLoginUser(ctx).User.UserName
+	dept.UpdateBy = c.GetLoginUser(ctx).UserName
 	dept.UpdateTime = model.DateTime(time.Now())
 
-	if err := system.DeptService.UpdateDept(&dept); err != nil {
+	if err := system.DeptService.UpdateDept(dept); err != nil {
 		rsp.Fail(err.Error(), ctx)
 	} else {
 		rsp.Ok(ctx)

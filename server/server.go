@@ -29,7 +29,7 @@ func noRouteHandle(engine *gin.Engine) {
 	// 前后端分离，F5刷新时路径为前端路由器，后台将404，将调转至首页
 	engine.NoRoute(func(ctx *gin.Context) {
 		if ctx.Request.Method == "GET" {
-			ctx.Redirect(302, "/")
+			ctx.File("./view/index.html")
 		} else {
 			ctx.JSON(404, gin.H{
 				"code":    404,

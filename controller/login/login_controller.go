@@ -47,16 +47,16 @@ func (c *loginController) Login(ctx *gin.Context) {
 	gb.Logger.Debugf("用户[%s]登录成功", req.Username)
 }
 
-func getLoginRequest(ctx *gin.Context) (*request.LoginRequest, error) {
-	req := &request.LoginRequest{}
-	if err := ctx.ShouldBindJSON(req); err != nil {
-		return nil, errors.Wrap(err, "用户登录json解析失败")
+func getLoginRequest(ctx *gin.Context) (request.LoginRequest, error) {
+	var req request.LoginRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		return req, errors.Wrap(err, "用户登录json解析失败")
 	}
 	if req.Username == "" || req.Password == "" {
-		return nil, errors.New("用户名或密码不能为空")
+		return req, errors.New("用户名或密码不能为空")
 	}
 	if req.Uuid == "" || req.Code == "" {
-		return nil, errors.New("验证码不能为空")
+		return req, errors.New("验证码不能为空")
 	}
 
 	ua := useragent.New(ctx.GetHeader("User-Agent"))
@@ -71,7 +71,7 @@ func (c *loginController) Logout(ctx *gin.Context) {
 	loginUser := c.GetLoginUser(ctx)
 
 	if err := login.TokenService.DelLoginUser(loginUser.Token); err != nil {
-		gb.Logger.Errorf("用户[%s]登出失败: %s", loginUser.User.UserName, err.Error())
+		gb.Logger.Errorf("用户[%s]登出失败: %s", loginUser.UserName, err.Error())
 		rsp.Fail(err.Error(), ctx)
 		return
 	}
@@ -81,15 +81,21 @@ func (c *loginController) Logout(ctx *gin.Context) {
 
 func (c *loginController) GetUserInfo(ctx *gin.Context) {
 	loginUser := c.GetLoginUser(ctx)
+	data := make(map[string]interface{})
 
 	// user
-	data := make(map[string]interface{})
-	data["user"] = loginUser.User
+	user, err := system.UserService.GetSysUserById(loginUser.UserId, false)
+	if err != nil {
+		gb.Logger.Errorf("获取%s用户信息失败: %s", loginUser.UserName, err.Error())
+		rsp.Fail(err.Error(), ctx)
+		return
+	}
+	data["user"] = user
 
 	// role
-	roles, err := system.RoleService.GetUserRolePerms(loginUser.User)
+	roles, err := system.RoleService.GetUserRolePerms(loginUser.UserId)
 	if err != nil {
-		gb.Logger.Errorf("获取%s角色权限失败: %s", loginUser.User.UserName, err.Error())
+		gb.Logger.Errorf("获取%s角色权限失败: %s", loginUser.UserName, err.Error())
 		rsp.Fail(err.Error(), ctx)
 		return
 	}
@@ -113,7 +119,7 @@ func (c *loginController) GetRouters(ctx *gin.Context) {
 	loginUser := c.GetLoginUser(ctx)
 
 	if menus, err := system.MenuService.GetUserMenuTree(loginUser); err != nil {
-		gb.Logger.Errorf("获取%s菜单权限失败: %s", loginUser.User.UserName, err.Error())
+		gb.Logger.Errorf("获取%s菜单权限失败: %s", loginUser.UserName, err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
 		rsp.OkWithData(menus, ctx)

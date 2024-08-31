@@ -17,11 +17,11 @@ func Init(engine *gin.Engine) {
 	initStaticFile(engine)
 
 	sys := extModule("系统登录")
-	publicGroup := RouterWraper{engine.Group("")}
+	publicGroup := RouterWraper{engine.Group("/api")}
 	publicGroup.GET("/captchaImage", login.Captcha.GetCode, sys.Ext())
 	publicGroup.POST("/login", login.UserLogin.Login, sys.Ext())
 
-	privateGroup := RouterWraper{engine.Group("")}
+	privateGroup := RouterWraper{engine.Group("/api")}
 	privateGroup.Use(security.JWTAuth())
 	privateGroup.POST("/logout", login.UserLogin.Logout, sys.Ext())
 	privateGroup.GET("/getInfo", login.UserLogin.GetUserInfo, sys.Ext())

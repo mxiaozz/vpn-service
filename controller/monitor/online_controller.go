@@ -58,11 +58,11 @@ func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 
 		users = append(users, response.UserOnline{
 			TokenId:   loginUser.Token,
-			DeptName:  loginUser.User.Dept.DeptName,
-			UserName:  loginUser.User.UserName,
+			DeptName:  loginUser.DeptName,
+			UserName:  loginUser.UserName,
 			Ipaddr:    loginUser.IpAddress,
 			Browser:   loginUser.Browser,
-			Os:        loginUser.Os,
+			Os:        loginUser.AgentOS,
 			LoginTime: loginUser.LoginTime,
 		})
 	}

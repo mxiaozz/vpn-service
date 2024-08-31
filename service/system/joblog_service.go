@@ -3,6 +3,7 @@ package system
 import (
 	"time"
 
+	"github.com/pkg/errors"
 	"vpn-web.funcworks.net/gb"
 	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
@@ -15,7 +16,7 @@ var JobLogService = &jobLogService{}
 type jobLogService struct {
 }
 
-func (jls *jobLogService) GetJobLogListPage(jobLog *entity.SysJobLog, page *model.Page[entity.SysJobLog]) error {
+func (jls *jobLogService) GetJobLogListPage(jobLog entity.SysJobLog, page *model.Page[entity.SysJobLog]) error {
 	return gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("*").From("sys_job_log").
 			Where(builder.If(jobLog.JobName != "", builder.Like{"job_name", jobLog.JobName}).
@@ -30,15 +31,17 @@ func (jls *jobLogService) GetJobLogListPage(jobLog *entity.SysJobLog, page *mode
 	})
 }
 
-func (jls *jobLogService) GetJobLog(jobLogId int64) (*entity.SysJobLog, error) {
-	var job entity.SysJobLog
-	if exist, err := gb.DB.Where("job_log_id = ?", jobLogId).Get(&job); err != nil || !exist {
-		return nil, err
+func (jls *jobLogService) GetJobLog(jobLogId int64) (entity.SysJobLog, error) {
+	var jobLog entity.SysJobLog
+	if exist, err := gb.DB.Where("job_log_id = ?", jobLogId).Get(&jobLog); err != nil {
+		return jobLog, err
+	} else if !exist {
+		return jobLog, errors.Wrap(gb.ErrNotFound, "任务日志不存在")
 	}
-	return &job, nil
+	return jobLog, nil
 }
 
-func (jls *jobLogService) AddJobLog(jobLog *entity.SysJobLog) error {
+func (jls *jobLogService) AddJobLog(jobLog entity.SysJobLog) error {
 	_, err := gb.DB.Insert(jobLog)
 	return err
 }

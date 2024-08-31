@@ -24,7 +24,7 @@ func (ds *dictService) GetAllDicts() ([]entity.SysDictType, error) {
 	return dicts, err
 }
 
-func (ds *dictService) GetDictListPage(dict *entity.SysDictType, page *model.Page[entity.SysDictType]) error {
+func (ds *dictService) GetDictListPage(dict entity.SysDictType, page *model.Page[entity.SysDictType]) error {
 	return gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("*").From("sys_dict_type").
 			Where(builder.If(dict.DictName != "", builder.Like{"dict_name", dict.DictName}).
@@ -38,15 +38,17 @@ func (ds *dictService) GetDictListPage(dict *entity.SysDictType, page *model.Pag
 	})
 }
 
-func (ds *dictService) GetDict(dictId int64) (*entity.SysDictType, error) {
+func (ds *dictService) GetDict(dictId int64) (entity.SysDictType, error) {
 	var dict entity.SysDictType
-	if exist, err := gb.DB.Where("dict_id = ?", dictId).Get(&dict); err != nil || !exist {
-		return nil, err
+	if exist, err := gb.DB.Where("dict_id = ?", dictId).Get(&dict); err != nil {
+		return dict, err
+	} else if !exist {
+		return dict, errors.Wrap(gb.ErrNotFound, "字典不存在")
 	}
-	return &dict, nil
+	return dict, nil
 }
 
-func (ds *dictService) AddDict(dict *entity.SysDictType) error {
+func (ds *dictService) AddDict(dict entity.SysDictType) error {
 	if exist, err := ds.checkDictTypeUnique(dict.DictType, dict.DictId); err != nil {
 		return err
 	} else if exist {
@@ -57,7 +59,7 @@ func (ds *dictService) AddDict(dict *entity.SysDictType) error {
 	return err
 }
 
-func (ds *dictService) UpdateDict(dict *entity.SysDictType) error {
+func (ds *dictService) UpdateDict(dict entity.SysDictType) error {
 	if exist, err := ds.checkDictTypeUnique(dict.DictType, dict.DictId); err != nil {
 		return err
 	} else if exist {
@@ -76,11 +78,10 @@ func (ds *dictService) DeleteDict(dictIds []int64) error {
 	return gb.Tx(func(dbSession *xorm.Session) error {
 		for _, dictId := range dictIds {
 			dict, err := ds.GetDict(dictId)
-			if err != nil {
-				return err
-			}
-			if dict == nil {
+			if err == gb.ErrNotFound {
 				continue
+			} else if err != nil {
+				return err
 			}
 
 			if exist, err := ds.checkDictTypeData(dict.DictType); err != nil {

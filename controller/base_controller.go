@@ -9,7 +9,7 @@ import (
 type BaseController struct {
 }
 
-func (c *BaseController) GetLoginUser(ctx *gin.Context) *login.LoginUser {
+func (c *BaseController) GetLoginUser(ctx *gin.Context) login.LoginUser {
 	user, _ := ctx.Get(cst.SYS_LOGIN_USER_KEY)
-	return user.(*login.LoginUser)
+	return user.(login.LoginUser)
 }

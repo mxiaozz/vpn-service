@@ -21,7 +21,7 @@ func (ps *postService) GetALlPosts() ([]entity.SysPost, error) {
 }
 
 // 岗位管理，获取岗位列表（包括岗位查询/分页）
-func (ps *postService) GetPostListPage(post *entity.SysPost, page *model.Page[entity.SysPost]) error {
+func (ps *postService) GetPostListPage(post entity.SysPost, page *model.Page[entity.SysPost]) error {
 	return gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("*").From("sys_post").
 			Where(builder.If(post.PostCode != "", builder.Like{"post_code", post.PostCode}).
@@ -41,20 +41,22 @@ func (ps *postService) GetUserPostList(userId int64) ([]entity.SysPost, error) {
 	return posts, err
 }
 
-func (ps *postService) GetPost(postId int64) (*entity.SysPost, error) {
+func (ps *postService) GetPost(postId int64) (entity.SysPost, error) {
 	var post entity.SysPost
-	if exist, err := gb.DB.Where("post_id = ?", postId).Get(&post); err != nil || !exist {
-		return nil, err
+	if exist, err := gb.DB.Where("post_id = ?", postId).Get(&post); err != nil {
+		return post, err
+	} else if !exist {
+		return post, errors.Wrap(gb.ErrNotFound, "岗位不存在")
 	}
-	return &post, nil
+	return post, nil
 }
 
-func (ps *postService) AddPost(post *entity.SysPost) error {
+func (ps *postService) AddPost(post entity.SysPost) error {
 	_, err := gb.DB.Insert(post)
 	return err
 }
 
-func (ps *postService) UpdatePost(post *entity.SysPost) error {
+func (ps *postService) UpdatePost(post entity.SysPost) error {
 	_, err := gb.DB.Where("post_id = ?", post.PostId).Update(post)
 	return err
 }

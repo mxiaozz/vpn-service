@@ -39,7 +39,7 @@ func (c *postController) GetPostListPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.PostService.GetPostListPage(&post, page); err != nil {
+	if err = system.PostService.GetPostListPage(post, page); err != nil {
 		gb.Logger.Errorln("岗位列表查询失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -73,10 +73,10 @@ func (c *postController) AddPost(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	post.CreateBy = c.GetLoginUser(ctx).User.UserName
+	post.CreateBy = c.GetLoginUser(ctx).UserName
 	post.CreateTime = model.DateTime(time.Now())
 
-	if err := system.PostService.AddPost(&post); err != nil {
+	if err := system.PostService.AddPost(post); err != nil {
 		gb.Logger.Errorln("增加岗位失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -94,10 +94,10 @@ func (c *postController) UpdatePost(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	post.UpdateBy = c.GetLoginUser(ctx).User.UserName
+	post.UpdateBy = c.GetLoginUser(ctx).UserName
 	post.UpdateTime = model.DateTime(time.Now())
 
-	if err := system.PostService.UpdatePost(&post); err != nil {
+	if err := system.PostService.UpdatePost(post); err != nil {
 		gb.Logger.Errorln("修改岗位失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {

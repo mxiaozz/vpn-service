@@ -40,7 +40,7 @@ func (c *jobController) GetJobListPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.JobService.GetJobListPage(&job, page); err != nil {
+	if err = system.JobService.GetJobListPage(job, page); err != nil {
 		gb.Logger.Errorln("任务列表查询失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -79,11 +79,11 @@ func (c *jobController) AddJob(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	job.CreateBy = c.GetLoginUser(ctx).User.UserName
+	job.CreateBy = c.GetLoginUser(ctx).UserName
 	job.CreateTime = model.DateTime(time.Now())
 	job.Status = "1"
 
-	if err := system.JobService.AddJob(&job); err != nil {
+	if err := system.JobService.AddJob(job); err != nil {
 		gb.Logger.Errorln("增加任务失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -106,10 +106,10 @@ func (c *jobController) UpdateJob(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	job.UpdateBy = c.GetLoginUser(ctx).User.UserName
+	job.UpdateBy = c.GetLoginUser(ctx).UserName
 	job.UpdateTime = model.DateTime(time.Now())
 
-	if err := system.JobService.UpdateJob(&job); err != nil {
+	if err := system.JobService.UpdateJob(job); err != nil {
 		gb.Logger.Errorln("修改任务失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -125,7 +125,7 @@ func (c *jobController) ChangeStatus(ctx *gin.Context) {
 		return
 	}
 
-	if err := system.JobService.ChangeStatus(&job); err != nil {
+	if err := system.JobService.ChangeStatus(job); err != nil {
 		gb.Logger.Errorln("修改任务状态失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -141,7 +141,7 @@ func (c *jobController) RunJob(ctx *gin.Context) {
 		return
 	}
 
-	if err := system.JobService.RunJob(&job); err != nil {
+	if err := system.JobService.RunJob(job); err != nil {
 		gb.Logger.Errorln("执行任务失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {

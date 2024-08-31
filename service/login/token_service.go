@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -18,82 +19,84 @@ import (
 
 var TokenService = &tokenService{
 	header:     gb.Config.Token.Header,
-	secret:     gb.Config.Token.Secret,
+	secret:     []byte(gb.Config.Token.Secret),
 	expiration: gb.Config.Token.Expiration,
 }
 
 type tokenService struct {
 	header     string // 令牌自定义标识
-	secret     string // 令牌秘钥
+	secret     []byte // 令牌秘钥
 	expiration int    // 令牌有效期（默认30分钟）
 }
 
 // 从缓存中获取已登录用户
-func (s *tokenService) GetLoginUser(ctx *gin.Context) (*login.LoginUser, error) {
+func (s *tokenService) GetLoginUser(ctx *gin.Context) (login.LoginUser, error) {
+	var zero login.LoginUser
+
 	// 从 request 中提取 token
 	tokenString, err := s.getToken(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "从 request 中获取 token 失败")
+		return zero, errors.Wrap(err, "从 request 中获取 token 失败")
 	}
 	if tokenString == "" {
-		return nil, errors.New("token is empty")
+		return zero, errors.New("token is empty")
 	}
 
 	// 解析并且校验 token
 	token, err := s.parseToken(tokenString)
 	if err != nil {
-		return nil, errors.Wrap(err, "token 解析校验失败")
+		return zero, errors.Wrap(err, "token 解析校验失败")
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("claims is not MapClaims")
+		return zero, errors.New("claims is not MapClaims")
 	}
 
 	// 从 token 中获取用户ID
 	userKey, ok := claims[cst.SYS_LOGIN_USER_KEY]
 	if !ok || userKey == nil || userKey.(string) == "" {
-		return nil, errors.New("userId is not in token")
+		return zero, errors.New("userId is not in token")
 	}
 
 	// 从 redis 中获取用户信息
 	info, err := gb.RedisProxy.Get(s.getTokenKey(userKey.(string)))
 	if err == redis.Nil {
-		return nil, errors.New("login expired")
+		return zero, errors.New("login expired")
 	} else if err != nil {
-		return nil, errors.Wrap(err, "从缓存中获取用户信息失败")
+		return zero, errors.Wrap(err, "从缓存中获取用户信息失败")
 	} else if info == "" {
-		return nil, errors.New("用户信息不正确")
+		return zero, errors.New("用户信息不正确")
 	}
 
 	// 转换为 LoginUser
 	var user login.LoginUser
-	if err = json.Unmarshal([]byte(info), &user); err != nil {
-		return nil, errors.Wrap(err, "将用户缓存信息转换为 LoginUser 对象失败")
+	var data = unsafe.Slice(unsafe.StringData(info), len(info))
+	if err = json.Unmarshal(data, &user); err != nil {
+		return zero, errors.Wrap(err, "将用户缓存信息转换为 LoginUser 对象失败")
 	}
-
-	return &user, nil
+	return user, nil
 }
 
 func (s *tokenService) getToken(ctx *gin.Context) (string, error) {
 	token := ctx.GetHeader(s.header)
-	if token != "" && strings.HasPrefix(token, cst.SYS_TOKEN_PREFIX) {
+	if token != "" {
 		token = strings.TrimPrefix(token, cst.SYS_TOKEN_PREFIX)
 	}
 	if data, err := base64.RawURLEncoding.DecodeString(token); err != nil {
 		return "", err
 	} else {
-		return string(data), nil
+		return unsafe.String(unsafe.SliceData(data), len(data)), nil
 	}
 }
 
 func (s *tokenService) parseToken(tokenString string) (*jwt.Token, error) {
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte(s.secret), nil
+		return s.secret, nil
 	}, jwt.WithoutClaimsValidation())
 }
 
 // 创建登录用户token，并将登录用户信息缓存
-func (s *tokenService) CreateToken(loginUser *login.LoginUser) (string, error) {
+func (s *tokenService) CreateToken(loginUser login.LoginUser) (string, error) {
 	loginUser.Token = uuid.NewString()
 	loginUser.LoginTime = time.Now().UnixMilli()
 
@@ -105,7 +108,7 @@ func (s *tokenService) CreateToken(loginUser *login.LoginUser) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		cst.SYS_LOGIN_USER_KEY: loginUser.Token,
 	})
-	if tokenString, err := token.SignedString([]byte(s.secret)); err != nil {
+	if tokenString, err := token.SignedString(s.secret); err != nil {
 		return "", errors.Wrap(err, "生成 token 加签失败")
 	} else {
 		return token.EncodeSegment([]byte(tokenString)), nil
@@ -125,7 +128,7 @@ func (s *tokenService) getTokenKey(uuid string) string {
 }
 
 // 校验 token 是否快过期，提前 10分钟进行续约
-func (s *tokenService) VerifyToken(loginUser *login.LoginUser) {
+func (s *tokenService) VerifyToken(loginUser login.LoginUser) {
 	// 过期时间少于10分钟时续约 token
 	if loginUser.ExpireTime-time.Now().UnixMilli() < 10*60*1000 {
 		s.RefreshToken(loginUser)
@@ -133,7 +136,7 @@ func (s *tokenService) VerifyToken(loginUser *login.LoginUser) {
 }
 
 // 更新登录用户信息缓存保留时长
-func (s *tokenService) RefreshToken(loginUser *login.LoginUser) error {
+func (s *tokenService) RefreshToken(loginUser login.LoginUser) error {
 	if loginUser.LoginTime == 0 {
 		loginUser.LoginTime = time.Now().UnixMilli()
 	}

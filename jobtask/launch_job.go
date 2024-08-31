@@ -1,6 +1,8 @@
 package jobtask
 
 import (
+	"strconv"
+
 	"vpn-web.funcworks.net/gb"
 	"vpn-web.funcworks.net/service/system"
 )
@@ -18,7 +20,16 @@ func LoadSchedJobs() {
 			if job.Status == "1" {
 				continue
 			}
-			if err := gb.Sched.ScheduleJob(&job); err != nil {
+
+			schedJob := gb.SchedJob{
+				JobId:          strconv.FormatInt(job.JobId, 10),
+				JobName:        job.JobName,
+				JobGroup:       job.JobGroup,
+				InvokeTarget:   job.InvokeTarget,
+				CronExpression: job.CronExpression,
+			}
+
+			if err := gb.Sched.ScheduleJob(schedJob); err != nil {
 				gb.Logger.Errorf("%s 任务调度失败: %s", job.JobName, err.Error())
 			}
 		}

@@ -18,10 +18,10 @@ type menuService struct {
 }
 
 // 用户登录获取左侧菜单树结构
-func (ms *menuService) GetUserMenuTree(user *login.LoginUser) ([]response.RouterVo, error) {
+func (ms *menuService) GetUserMenuTree(user login.LoginUser) ([]response.RouterVo, error) {
 	var menus []entity.SysMenu
 	var err error
-	if user.User.IsAdmin() {
+	if user.IsAdmin() {
 		menus, err = ms.selectMenuAll(false)
 	} else {
 		menus, err = ms.selectMenuByUserId(user.UserId, false)
@@ -86,9 +86,9 @@ func (ms *menuService) buildRouters(menus []entity.SysMenu) []response.RouterVo 
 	for _, menu := range menus {
 		router := response.RouterVo{}
 		router.Hidden = (menu.Visible == "1")
-		router.Name = ms.getRouteName(&menu)
-		router.Path = ms.getRouterPath(&menu)
-		router.Component = ms.getComponent(&menu)
+		router.Name = ms.getRouteName(menu)
+		router.Path = ms.getRouterPath(menu)
+		router.Component = ms.getComponent(menu)
 		router.Query = menu.Query
 		router.Meta = &response.MetaVo{
 			Title:   menu.MenuName,
@@ -107,7 +107,7 @@ func (ms *menuService) buildRouters(menus []entity.SysMenu) []response.RouterVo 
 			router.Children = ms.buildRouters(children)
 		} else
 		// 一级菜单
-		if ms.isMenuFrame(&menu) {
+		if ms.isMenuFrame(menu) {
 			c := response.RouterVo{
 				Path:      menu.Path,
 				Component: menu.Component,
@@ -124,7 +124,7 @@ func (ms *menuService) buildRouters(menus []entity.SysMenu) []response.RouterVo 
 			router.Children = []response.RouterVo{c}
 		} else
 		// 一级菜单链接或一级目录链接
-		if menu.ParentId == 0 && ms.isInnerLink(&menu) {
+		if menu.ParentId == 0 && ms.isInnerLink(menu) {
 			path := ms.innerLinkReplaceEach(menu.Path)
 			c := response.RouterVo{
 				Path:      path,
@@ -149,7 +149,7 @@ func (ms *menuService) buildRouters(menus []entity.SysMenu) []response.RouterVo 
 	return routers
 }
 
-func (ms *menuService) getRouteName(menu *entity.SysMenu) string {
+func (ms *menuService) getRouteName(menu entity.SysMenu) string {
 	if ms.isMenuFrame(menu) {
 		return ""
 	}
@@ -157,14 +157,14 @@ func (ms *menuService) getRouteName(menu *entity.SysMenu) string {
 }
 
 // 是否为菜单内部跳转
-func (ms *menuService) isMenuFrame(menu *entity.SysMenu) bool {
+func (ms *menuService) isMenuFrame(menu entity.SysMenu) bool {
 	return menu.ParentId == 0 &&
 		cst.MENU_TYPE_MENU == menu.MenuType &&
 		menu.IsFrame == cst.MENU_NO_FRAME
 }
 
 // 是否为内链组件
-func (ms *menuService) isInnerLink(menu *entity.SysMenu) bool {
+func (ms *menuService) isInnerLink(menu entity.SysMenu) bool {
 	return menu.IsFrame == cst.MENU_NO_FRAME &&
 		util.IsHttp(menu.Path)
 }
@@ -178,7 +178,7 @@ func (ms *menuService) innerLinkReplaceEach(path string) string {
 	return path
 }
 
-func (ms *menuService) getRouterPath(menu *entity.SysMenu) string {
+func (ms *menuService) getRouterPath(menu entity.SysMenu) string {
 	routerPath := menu.Path
 	// 内链打开外网方式
 	if menu.ParentId != 0 && ms.isInnerLink(menu) {
@@ -196,7 +196,7 @@ func (ms *menuService) getRouterPath(menu *entity.SysMenu) string {
 	return routerPath
 }
 
-func (ms *menuService) getComponent(menu *entity.SysMenu) string {
+func (ms *menuService) getComponent(menu entity.SysMenu) string {
 	// 顶级目录/菜单
 	component := cst.MENU_LAYOUT
 
@@ -217,19 +217,19 @@ func (ms *menuService) getComponent(menu *entity.SysMenu) string {
 	return component
 }
 
-func (ms *menuService) isParentView(menu *entity.SysMenu) bool {
+func (ms *menuService) isParentView(menu entity.SysMenu) bool {
 	return menu.ParentId != 0 && cst.MENU_TYPE_DIR == menu.MenuType
 }
 
 // 获取用户菜单权限标识列表，admin为 *：*：*
-func (ms *menuService) GetMenuPermission(user *entity.SysUser) (map[string]int8, error) {
+func (ms *menuService) GetMenuPermission(userId int64) (map[string]int8, error) {
 	permSet := make(map[string]int8)
-	if user.IsAdmin() {
+	if util.IsAdminId(userId) {
 		permSet[cst.SYS_ALL_PERMISSION] = 1
 		return permSet, nil
 	}
 
-	permList, err := ms.selectMenuPermsByUserId(user.UserId)
+	permList, err := ms.selectMenuPermsByUserId(userId)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +262,7 @@ func (ms *menuService) selectMenuPermsByUserId(userId int64) ([]string, error) {
 }
 
 // 菜单管理列表，menu.Params["userId"] 指定具体用户菜单列表，未指定则返回全部菜单(M & C & F)
-func (ms *menuService) GetMenuList(menu *entity.SysMenu) ([]entity.SysMenu, error) {
+func (ms *menuService) GetMenuList(menu entity.SysMenu) ([]entity.SysMenu, error) {
 	dbSession := gb.DB.Table("sys_menu").Alias("m").
 		Select("m.menu_id, m.parent_id, m.menu_name, m.path, m.component, m.`query`, m.visible, m.status, ifnull(m.perms,'') as perms, m.is_frame, m.is_cache, m.menu_type, m.icon, m.order_num, m.create_time")
 	if userId, ok := menu.Params["userId"]; ok {
@@ -286,15 +286,17 @@ func (ms *menuService) GetMenuList(menu *entity.SysMenu) ([]entity.SysMenu, erro
 	return menus, err
 }
 
-func (ms *menuService) GetMenu(menuId int64) (*entity.SysMenu, error) {
+func (ms *menuService) GetMenu(menuId int64) (entity.SysMenu, error) {
 	var menu entity.SysMenu
-	if exist, err := gb.DB.Table("sys_menu").Where("menu_id = ?", menuId).Get(&menu); err != nil || !exist {
-		return nil, err
+	if exist, err := gb.DB.Table("sys_menu").Where("menu_id = ?", menuId).Get(&menu); err != nil {
+		return menu, err
+	} else if !exist {
+		return menu, errors.Wrap(gb.ErrNotFound, "菜单不存在")
 	}
-	return &menu, nil
+	return menu, nil
 }
 
-func (ms *menuService) AddMenu(menu *entity.SysMenu) error {
+func (ms *menuService) AddMenu(menu entity.SysMenu) error {
 	if exist, err := ms.checkMenuNameUnique(menu.MenuName, menu.MenuId, menu.ParentId); err != nil {
 		return err
 	} else if exist {
@@ -305,7 +307,7 @@ func (ms *menuService) AddMenu(menu *entity.SysMenu) error {
 	return err
 }
 
-func (ms *menuService) UpdateMenu(menu *entity.SysMenu) error {
+func (ms *menuService) UpdateMenu(menu entity.SysMenu) error {
 	if exist, err := ms.checkMenuNameUnique(menu.MenuName, menu.MenuId, menu.ParentId); err != nil {
 		return err
 	} else if exist {
@@ -346,10 +348,10 @@ func (ms *menuService) existMenuRole(menuId int64) (bool, error) {
 }
 
 // 角色管理，角色编辑菜单树选择框列表
-func (ms *menuService) GetRolerMenuTreeSelect(user *login.LoginUser) ([]entity.SysMenu, error) {
+func (ms *menuService) GetRolerMenuTreeSelect(user login.LoginUser) ([]entity.SysMenu, error) {
 	var menus []entity.SysMenu
 	var err error
-	if user.User.IsAdmin() {
+	if user.IsAdmin() {
 		menus, err = ms.selectMenuAll(true)
 	} else {
 		menus, err = ms.selectMenuByUserId(user.UserId, true)

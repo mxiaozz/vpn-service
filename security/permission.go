@@ -7,14 +7,16 @@ import (
 	"vpn-web.funcworks.net/util/rsp"
 )
 
-func PermAuth(handler gin.HandlerFunc, ext *ExtInfo) gin.HandlerFunc {
+func PermAuth(handler gin.HandlerFunc, ext ExtInfo) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		if !authorize(ext, ctx) {
+		var permInfo = ext
+
+		if !authorize(permInfo, ctx) {
 			rsp.FailWithCode(cst.HTTP_FORBIDDEN, "无授权", ctx)
 			return
 		}
 
-		logCtx, err := doBefore(ext, ctx)
+		logCtx, err := doBefore(permInfo, ctx)
 		if err != nil {
 			rsp.Fail(err.Error(), ctx)
 			return
@@ -27,14 +29,14 @@ func PermAuth(handler gin.HandlerFunc, ext *ExtInfo) gin.HandlerFunc {
 	}
 }
 
-func authorize(ext *ExtInfo, ctx *gin.Context) bool {
+func authorize(ext ExtInfo, ctx *gin.Context) bool {
 	// 没有登记权限，认为无须鉴权
 	if len(ext.Perms) == 0 {
 		return true
 	}
 
 	user, _ := ctx.Get(cst.SYS_LOGIN_USER_KEY)
-	loginUser := user.(*login.LoginUser)
+	loginUser := user.(login.LoginUser)
 	userPerms := loginUser.Permissions
 	// 用户无任何权限，拒绝
 	if len(userPerms) == 0 {

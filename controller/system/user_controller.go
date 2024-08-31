@@ -10,7 +10,6 @@ import (
 	"vpn-web.funcworks.net/gb"
 	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
-	"vpn-web.funcworks.net/service/openvpn"
 	"vpn-web.funcworks.net/service/system"
 	"vpn-web.funcworks.net/util"
 	"vpn-web.funcworks.net/util/rsp"
@@ -25,7 +24,7 @@ type userController struct {
 // 获取用户列表
 func (c *userController) GetUserListPage(ctx *gin.Context) {
 	// 获取分页参数
-	page, err := model.NewPage[*entity.SysUser](ctx)
+	page, err := model.NewPage[entity.SysUser](ctx)
 	if err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
@@ -49,7 +48,7 @@ func (c *userController) GetUserListPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.UserService.GetUserListPage(&user, page); err != nil {
+	if err = system.UserService.GetUserListPage(user, page); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -123,12 +122,12 @@ func (c *userController) AddUser(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	user.CreateBy = c.GetLoginUser(ctx).User.UserName
+	user.CreateBy = c.GetLoginUser(ctx).UserName
 	user.CreateTime = model.DateTime(time.Now())
 	user.DelFlag = "0"
 
 	// 数据库增加
-	if err := system.UserService.AddUser(&user); err != nil {
+	if err := system.UserService.AddUser(user); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -145,10 +144,10 @@ func (c *userController) UpdateUser(ctx *gin.Context) {
 	}
 
 	// 增补信息
-	user.UpdateBy = c.GetLoginUser(ctx).User.UserName
+	user.UpdateBy = c.GetLoginUser(ctx).UserName
 	user.UpdateTime = model.DateTime(time.Now())
 
-	if err := system.UserService.UpdateUser(&user); err != nil {
+	if err := system.UserService.UpdateUser(user); err != nil {
 		gb.Logger.Errorf(err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -177,26 +176,6 @@ func (c *userController) DeleteUser(ctx *gin.Context) {
 		return
 	}
 
-	// 注销用户证书
-	users, err := system.UserService.GetSysUsers(userIds)
-	if err != nil {
-		gb.Logger.Errorln("删除用户注销证书读取用户信息失败", err.Error())
-		rsp.Fail(err.Error(), ctx)
-		return
-	}
-
-	util.NewList(users).ForEach(func(u entity.SysUser) {
-		if cert, err := openvpn.OpenvpnService.GetUserCert(u.UserName, false); err != nil {
-			gb.Logger.Errorf("删除用户 %s 时，读取其证书失败: %s", u.UserName, err.Error())
-		} else if cert.Name == "" {
-			gb.Logger.Info("删除用户 %s 时，其证书尚未生成，无须处理", u.UserName)
-		} else {
-			if err := openvpn.OpenvpnService.RevokeUserCert(u.UserName); err != nil {
-				gb.Logger.Errorf("删除用户 %s 时，注销其证书失败: %s", u.UserName, err.Error())
-			}
-		}
-	})
-
 	rsp.Ok(ctx)
 }
 
@@ -208,7 +187,7 @@ func (c *userController) ResetPassword(ctx *gin.Context) {
 		return
 	}
 
-	if err := system.UserService.ResetPassword(&user); err != nil {
+	if err := system.UserService.ResetPassword(user); err != nil {
 		gb.Logger.Errorf("修改密码失败：%d, %s", user.UserId, err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
@@ -224,7 +203,7 @@ func (c *userController) ChangeStatus(ctx *gin.Context) {
 		return
 	}
 
-	if err := system.UserService.ChangeStatus(&user); err != nil {
+	if err := system.UserService.ChangeStatus(user); err != nil {
 		gb.Logger.Errorf("修改状态失败：%d, %s", user.UserId, err.Error())
 		rsp.Fail(err.Error(), ctx)
 		return
@@ -244,10 +223,6 @@ func (c *userController) AuthRole(ctx *gin.Context) {
 	if err != nil {
 		gb.Logger.Error(err.Error())
 		rsp.Fail(err.Error(), ctx)
-		return
-	}
-	if sysUser == nil {
-		rsp.Fail("用户不存在", ctx)
 		return
 	}
 

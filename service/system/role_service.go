@@ -25,14 +25,14 @@ func (rs *roleService) GetAllRoles() ([]entity.SysRole, error) {
 }
 
 // 获取用户角色权限标识
-func (rs *roleService) GetUserRolePerms(user *entity.SysUser) (map[string]int8, error) {
+func (rs *roleService) GetUserRolePerms(userId int64) (map[string]int8, error) {
 	roleSet := make(map[string]int8)
-	if user.IsAdmin() {
+	if util.IsAdminId(userId) {
 		roleSet["admin"] = 1
 		return roleSet, nil
 	}
 
-	roles, err := rs.GetUserRoles(user.UserId)
+	roles, err := rs.GetUserRoles(userId)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (rs *roleService) GetUserRoles(userId int64) ([]entity.SysRole, error) {
 }
 
 // 角色管理，获取角色列表（包括角色查询/分页）
-func (rs *roleService) GetRoleListPage(role *entity.SysRole, page *model.Page[entity.SysRole]) error {
+func (rs *roleService) GetRoleListPage(role entity.SysRole, page *model.Page[entity.SysRole]) error {
 	return gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("*").From("sys_role").
 			Where(builder.If(role.RoleName != "", builder.Like{"role_name", role.RoleName}).
@@ -73,17 +73,19 @@ func (rs *roleService) GetRoleListPage(role *entity.SysRole, page *model.Page[en
 	})
 }
 
-// 获取角色信息（角色不存在时返回 nil）
-func (rs *roleService) GetRole(roleId int64) (*entity.SysRole, error) {
+// 获取角色信息
+func (rs *roleService) GetRole(roleId int64) (entity.SysRole, error) {
 	var role entity.SysRole
-	if exist, err := gb.DB.Table("sys_role").Where("role_id = ?", roleId).Get(&role); err != nil || !exist {
-		return nil, err
+	if exist, err := gb.DB.Table("sys_role").Where("role_id = ?", roleId).Get(&role); err != nil {
+		return role, err
+	} else if !exist {
+		return role, errors.Wrap(gb.ErrNotFound, "角色不存在")
 	}
-	return &role, nil
+	return role, nil
 }
 
 // 添加角色
-func (rs *roleService) AddRole(role *entity.SysRole) error {
+func (rs *roleService) AddRole(role entity.SysRole) error {
 	return gb.Tx(func(dbSession *xorm.Session) error {
 		if exist, err := rs.checkRoleNameUnique(role.RoleName, role.RoleId); err != nil {
 			return err
@@ -115,7 +117,7 @@ func (rs *roleService) AddRole(role *entity.SysRole) error {
 }
 
 // 编辑更新角色
-func (rs *roleService) UpdateRole(role *entity.SysRole) error {
+func (rs *roleService) UpdateRole(role entity.SysRole) error {
 	if role.IsAdmin() {
 		return errors.New("不允许操作超级管理员角色")
 	}
@@ -194,7 +196,7 @@ func (rs *roleService) checkRoleRsUser(roleId int64) (bool, error) {
 }
 
 // 角色状态修改
-func (rs *roleService) ChangeStatus(role *entity.SysRole) error {
+func (rs *roleService) ChangeStatus(role entity.SysRole) error {
 	if role.IsAdmin() {
 		return errors.New("不允许操作超级管理员角色")
 	}
@@ -203,7 +205,7 @@ func (rs *roleService) ChangeStatus(role *entity.SysRole) error {
 }
 
 // 修改角色数据权限范围
-func (rs *roleService) ChangeRoleDataScope(role *entity.SysRole) error {
+func (rs *roleService) ChangeRoleDataScope(role entity.SysRole) error {
 	if role.IsAdmin() {
 		return errors.New("不允许操作超级管理员角色")
 	}

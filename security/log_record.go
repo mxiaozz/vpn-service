@@ -15,6 +15,7 @@ import (
 	"vpn-web.funcworks.net/model/entity"
 	"vpn-web.funcworks.net/model/login"
 	"vpn-web.funcworks.net/model/request"
+	"vpn-web.funcworks.net/service/monitor"
 	"vpn-web.funcworks.net/service/system"
 	"vpn-web.funcworks.net/util"
 )
@@ -66,7 +67,7 @@ func saveLoginLog(ctx *logContext) {
 	code, msg := parseResponseBody(ctx, "登录成功")
 
 	// 保存日志
-	log := &entity.SysLoginLog{
+	log := entity.SysLoginLog{
 		UserName:      ctx.UserName,
 		Ipaddr:        ctx.ClientId,
 		LoginLocation: "",
@@ -77,7 +78,7 @@ func saveLoginLog(ctx *logContext) {
 		Status:        util.If(code == cst.HTTP_SUCCESS, cst.SYS_SUCCESS, cst.SYS_FAIL),
 	}
 
-	if err := system.LoginLogService.AddLoginLog(log); err != nil {
+	if err := monitor.LoginLogService.AddLoginLog(log); err != nil {
 		gb.Logger.Errorln("保存登录日志失败", err.Error())
 	}
 }
@@ -105,7 +106,7 @@ func saveOperLog(ctx *logContext) {
 	code, msg := parseResponseBody(ctx, "")
 
 	// 保存日志
-	operLog := &entity.SysOperLog{
+	operLog := entity.SysOperLog{
 		Title:         ctx.Module,
 		BusinessType:  0,
 		Method:        "",
@@ -116,8 +117,6 @@ func saveOperLog(ctx *logContext) {
 		OperUrl:       ctx.Path,
 		OperIp:        ctx.ClientId,
 		OperLocation:  "",
-		OperParam:     string(ctx.RequestBody),
-		JsonResult:    string(ctx.ResponseBody),
 		ErrorMsg:      msg,
 		CostTime:      ctx.CostTime.Milliseconds(),
 		OperTime:      ctx.BeginTime,
@@ -148,7 +147,7 @@ func saveOperLog(ctx *logContext) {
 	}
 }
 
-func doBefore(ext *ExtInfo, ctx *gin.Context) (*logContext, error) {
+func doBefore(ext ExtInfo, ctx *gin.Context) (*logContext, error) {
 	// GET 操作不记录日志
 	if strings.EqualFold(ctx.Request.Method, "GET") {
 		return nil, nil
@@ -174,10 +173,10 @@ func doBefore(ext *ExtInfo, ctx *gin.Context) (*logContext, error) {
 
 	// login user info
 	if user, _ := ctx.Get(cst.SYS_LOGIN_USER_KEY); user != nil {
-		loginUser := user.(*login.LoginUser)
+		loginUser := user.(login.LoginUser)
 		logCtx.UserId = loginUser.UserId
-		logCtx.UserName = loginUser.User.UserName
-		logCtx.DeptName = loginUser.User.Dept.DeptName
+		logCtx.UserName = loginUser.UserName
+		logCtx.DeptName = loginUser.DeptName
 	}
 
 	// 接收响应 body

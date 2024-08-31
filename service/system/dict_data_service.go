@@ -16,7 +16,7 @@ var DictDataService = &dictDataService{}
 type dictDataService struct {
 }
 
-func (ds *dictDataService) GetDictDataListPage(dictData *entity.SysDictData, page *model.Page[entity.SysDictData]) error {
+func (ds *dictDataService) GetDictDataListPage(dictData entity.SysDictData, page *model.Page[entity.SysDictData]) error {
 	return gb.SelectPage(page, func(sql *builder.Builder) builder.Cond {
 		sql.Select("*").From("sys_dict_data").
 			Where(builder.If(dictData.DictType != "", builder.Eq{"dict_type": dictData.DictType}).
@@ -47,15 +47,17 @@ func (ds *dictDataService) GetDictDataByType(dictType string) ([]entity.SysDictD
 	}
 }
 
-func (ds *dictDataService) GetDictData(dictDataId int64) (*entity.SysDictData, error) {
+func (ds *dictDataService) GetDictData(dictDataId int64) (entity.SysDictData, error) {
 	var dictData entity.SysDictData
-	if exist, err := gb.DB.Where("dict_code = ?", dictDataId).Get(&dictData); err != nil || !exist {
-		return nil, err
+	if exist, err := gb.DB.Where("dict_code = ?", dictDataId).Get(&dictData); err != nil {
+		return dictData, err
+	} else if !exist {
+		return dictData, errors.Wrap(gb.ErrNotFound, "字典数据不存在")
 	}
-	return &dictData, nil
+	return dictData, nil
 }
 
-func (ds *dictDataService) AddDictData(dictData *entity.SysDictData) error {
+func (ds *dictDataService) AddDictData(dictData entity.SysDictData) error {
 	if exist, err := ds.checkDictValueUnique(dictData.DictType, dictData.DictValue, dictData.DictCode); err != nil {
 		return err
 	} else if exist {
@@ -66,7 +68,7 @@ func (ds *dictDataService) AddDictData(dictData *entity.SysDictData) error {
 	return err
 }
 
-func (ds *dictDataService) UpdateDictData(dictData *entity.SysDictData) error {
+func (ds *dictDataService) UpdateDictData(dictData entity.SysDictData) error {
 	if exist, err := ds.checkDictValueUnique(dictData.DictType, dictData.DictValue, dictData.DictCode); err != nil {
 		return err
 	} else if exist {

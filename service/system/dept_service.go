@@ -18,12 +18,14 @@ type deptService struct {
 }
 
 // 获取部门信息，不存在时返回 nil
-func (ds *deptService) GetDept(deptId int64) (*entity.SysDept, error) {
+func (ds *deptService) GetDept(deptId int64) (entity.SysDept, error) {
 	var dept entity.SysDept
-	if exist, err := gb.DB.Where("dept_id = ?", deptId).Get(&dept); err != nil || !exist {
-		return nil, err
+	if exist, err := gb.DB.Where("dept_id = ?", deptId).Get(&dept); err != nil {
+		return dept, err
+	} else if !exist {
+		return dept, errors.Wrap(gb.ErrNotFound, "部门不存在")
 	}
-	return &dept, nil
+	return dept, nil
 }
 
 func (ds *deptService) GetDepts(deptIds ...int64) ([]entity.SysDept, error) {
@@ -35,18 +37,18 @@ func (ds *deptService) GetDepts(deptIds ...int64) ([]entity.SysDept, error) {
 }
 
 func (ds *deptService) GetDeptTree() ([]entity.SysDept, error) {
-	if depts, err := ds.selectDeptList(&entity.SysDept{}); err != nil {
+	if depts, err := ds.selectDeptList(entity.SysDept{}); err != nil {
 		return nil, err
 	} else {
 		return ds.buildDeptTree(depts, 0), nil
 	}
 }
 
-func (ds *deptService) GetDeptList(dept *entity.SysDept) ([]entity.SysDept, error) {
+func (ds *deptService) GetDeptList(dept entity.SysDept) ([]entity.SysDept, error) {
 	return ds.selectDeptList(dept)
 }
 
-func (ds *deptService) selectDeptList(dept *entity.SysDept) ([]entity.SysDept, error) {
+func (ds *deptService) selectDeptList(dept entity.SysDept) ([]entity.SysDept, error) {
 	dbSession := gb.DB.Where("del_flag = 0")
 	if dept.DeptId != 0 {
 		dbSession.And("dept_id = ?", dept.DeptId)
@@ -106,12 +108,10 @@ func (ds *deptService) GetDeptListByRoleId(roleId int64) ([]int64, error) {
 	return deptIds, err
 }
 
-func (ds *deptService) AddDept(dept *entity.SysDept) error {
+func (ds *deptService) AddDept(dept entity.SysDept) error {
 	parent, err := ds.GetDept(dept.ParentId)
 	if err != nil {
 		return errors.Wrap(err, "查询上级部门失败")
-	} else if parent == nil {
-		return errors.New("上级部门不存在")
 	}
 	dept.Ancestors = parent.Ancestors + "," + strconv.FormatInt(parent.DeptId, 10)
 
@@ -130,7 +130,7 @@ func (ds *deptService) checkDeptNameUnique(deptName string, parentId, deptId int
 }
 
 func (ds *deptService) GetDeptsExcludeChild(deptId int64) ([]entity.SysDept, error) {
-	depts, err := ds.GetDeptList(&entity.SysDept{})
+	depts, err := ds.GetDeptList(entity.SysDept{})
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (ds *deptService) GetDeptsExcludeChild(deptId int64) ([]entity.SysDept, err
 	return depts, nil
 }
 
-func (ds *deptService) UpdateDept(dept *entity.SysDept) error {
+func (ds *deptService) UpdateDept(dept entity.SysDept) error {
 	return gb.Tx(func(dbSession *xorm.Session) error {
 		// 检查
 		if exist, err := ds.checkDeptNameUnique(dept.DeptName, dept.ParentId, dept.DeptId); err != nil {
@@ -166,8 +166,6 @@ func (ds *deptService) UpdateDept(dept *entity.SysDept) error {
 		parent, err := ds.GetDept(dept.ParentId)
 		if err != nil {
 			return errors.Wrap(err, "查询上级部门失败")
-		} else if parent == nil {
-			return errors.New("上级部门不存在")
 		}
 
 		// 修正子部门 ancestors
@@ -181,12 +179,12 @@ func (ds *deptService) UpdateDept(dept *entity.SysDept) error {
 		newChildrenAncestors := parent.Ancestors + "," + newParentIdStr + "," + deptIdStr
 		dept.Ancestors = parent.Ancestors + "," + newParentIdStr
 
-		if children, err := ds.getDeptChild(dept.DeptId); err != nil {
+		if children, err := ds.getDeptChild(oldChildrenAncestors); err != nil {
 			return err
 		} else if len(children) > 0 {
 			for _, d := range children {
 				d.Ancestors = strings.Replace(d.Ancestors, oldChildrenAncestors, newChildrenAncestors, -1)
-				if _, err := dbSession.Where("dept_id = ?", d.DeptId).Update(d); err != nil {
+				if _, err := dbSession.Cols("ancestors").Where("dept_id = ?", d.DeptId).Update(d); err != nil {
 					return err
 				}
 			}
@@ -198,24 +196,26 @@ func (ds *deptService) UpdateDept(dept *entity.SysDept) error {
 	})
 }
 
-func (ds *deptService) getDeptChild(deptId int64) ([]*entity.SysDept, error) {
-	depts, err := ds.GetDeptList(&entity.SysDept{})
+func (ds *deptService) getDeptChild(oldChildrenAncestors string) ([]entity.SysDept, error) {
+	depts, err := ds.GetDeptList(entity.SysDept{})
 	if err != nil {
 		return nil, err
 	}
 
-	deptIdStr := strconv.FormatInt(deptId, 10)
 	depts = util.NewList(depts).Filter(func(d entity.SysDept) bool {
-		ancestors := strings.Split(d.Ancestors, ",")
-		return slices.Contains(ancestors, deptIdStr)
+		return strings.HasPrefix(d.Ancestors, oldChildrenAncestors)
 	})
-	return util.Convert(depts, func(d entity.SysDept) *entity.SysDept {
-		return &d
-	}), nil
+	return depts, nil
 }
 
 func (ds *deptService) DeleteDept(deptId int64) error {
 	return gb.Tx(func(dbSession *xorm.Session) error {
+		if count, err := dbSession.Table("sys_dept").Where("parent_id = ?", deptId).Count(); err != nil {
+			return err
+		} else if count > 0 {
+			return errors.New("存在下级部门，不能删除")
+		}
+
 		if exist, err := gb.DB.Table("sys_user").Where("dept_id = ?", deptId).Exist(); err != nil {
 			return err
 		} else if exist {

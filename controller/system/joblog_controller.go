@@ -38,7 +38,7 @@ func (c *jobLogController) GetJobLogListPage(ctx *gin.Context) {
 	}
 
 	// 分页查询
-	if err = system.JobLogService.GetJobLogListPage(&jobLog, page); err != nil {
+	if err = system.JobLogService.GetJobLogListPage(jobLog, page); err != nil {
 		gb.Logger.Errorln("任务日志列表查询失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 	} else {
