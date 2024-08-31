@@ -90,13 +90,14 @@ func (c *userController) GetUserInfo(ctx *gin.Context) {
 	}
 
 	// 个人信息详情
-	sysUser, err := system.UserService.GetSysUserById(userId, true)
+	user, err := system.UserService.GetSysUserById(userId, true)
 	if err != nil {
 		gb.Logger.Errorln("获取用户信息失败", err.Error())
 		rsp.Fail(err.Error(), ctx)
 		return
 	}
-	data["data"] = sysUser
+	user.Password = ""
+	data["data"] = user
 
 	// 个人岗位信息
 	posts, err = system.PostService.GetUserPostList(userId)
@@ -108,7 +109,13 @@ func (c *userController) GetUserInfo(ctx *gin.Context) {
 	data["postIds"] = util.NewList(posts).MapToInt64(func(p entity.SysPost) int64 { return p.PostId })
 
 	// 个人角色信息
-	data["roleIds"] = util.NewList(sysUser.Roles).MapToInt64(func(r entity.SysRole) int64 { return r.RoleId })
+	roles, err = system.RoleService.GetUserRoles(userId)
+	if err != nil {
+		gb.Logger.Errorln("获取用户角色失败", err.Error())
+		rsp.Fail(err.Error(), ctx)
+		return
+	}
+	data["roleIds"] = util.NewList(roles).MapToInt64(func(r entity.SysRole) int64 { return r.RoleId })
 
 	rsp.Context(ctx).Flat().OkWithData(data)
 }
@@ -219,7 +226,15 @@ func (c *userController) AuthRole(ctx *gin.Context) {
 		return
 	}
 
-	sysUser, err := system.UserService.GetSysUserById(userId, true)
+	user, err := system.UserService.GetSysUserById(userId, true)
+	if err != nil {
+		gb.Logger.Error(err.Error())
+		rsp.Fail(err.Error(), ctx)
+		return
+	}
+	user.Password = ""
+
+	roles, err := system.RoleService.GetUserRoles(userId)
 	if err != nil {
 		gb.Logger.Error(err.Error())
 		rsp.Fail(err.Error(), ctx)
@@ -227,9 +242,8 @@ func (c *userController) AuthRole(ctx *gin.Context) {
 	}
 
 	data := make(map[string]any)
-	data["user"] = sysUser
-	data["roles"] = sysUser.Roles
-	sysUser.Roles = nil
+	data["user"] = user
+	data["roles"] = roles
 	rsp.Context(ctx).Flat().OkWithData(data)
 }
 

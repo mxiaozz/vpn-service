@@ -8,6 +8,11 @@ token:
   secret: abcdefghijklmnopqrstuvwxyz
   expiration: 30
 
+file:
+  avatar:
+    rootStore: ./view/static/avatar
+    rootUrl: /static/avatar
+
 sqlite:
     path: sqlite3.db
 
@@ -28,4 +33,4 @@ login:
   lockTime: 10
 
 openvpn:
-  mgmtUrl: http://192.168.31.120:8988
+  mgmtUrl: http://47.115.231.143:8988

@@ -213,6 +213,11 @@ func getRequestBody(ctx *gin.Context) ([]byte, error) {
 		}
 		return nil, nil
 	}
+
+	if strings.Contains(ctx.GetHeader("Content-Type"), "multipart/form-data") {
+		return []byte("[文件]"), nil
+	}
+
 	if body, err := io.ReadAll(ctx.Request.Body); err != nil {
 		return nil, err
 	} else {

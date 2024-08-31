@@ -1,11 +1,21 @@
 package system
 
 import (
+	"fmt"
+	"io"
+	"mime/multipart"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 	"vpn-web.funcworks.net/gb"
 	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
+	"vpn-web.funcworks.net/model/login"
 	"vpn-web.funcworks.net/util"
 	"xorm.io/builder"
 	"xorm.io/xorm"
@@ -114,12 +124,6 @@ func (us *userService) getUserExtInfo(user *entity.SysUser) error {
 	} else {
 		user.Dept = dept
 	}
-
-	roles, err := RoleService.GetUserRoles(user.UserId)
-	if err != nil {
-		return errors.Wrap(err, "读取用户角色列表失败")
-	}
-	user.Roles = roles
 	return nil
 }
 
@@ -369,4 +373,130 @@ func (us *userService) GetNotRoleUserPage(roleId int64, user entity.SysUser, pag
 		return err
 	}
 	return nil
+}
+
+func (us *userService) UpdateOwnerInfo(user entity.SysUser) error {
+	_, err := gb.DB.Table("sys_user").Cols("nick_name", "email", "phonenumber", "sex").
+		Where("user_id = ?", user.UserId).Update(user)
+	return err
+}
+
+func (us *userService) UpdateOwnerPassword(userId int64, newPassword, oldPassword string) error {
+	if newPassword == oldPassword {
+		return errors.New("新密码不能与旧密码相同")
+	}
+
+	dbUser, err := us.GetSysUserById(userId, false)
+	if err != nil {
+		return err
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(oldPassword)); err != nil {
+		return errors.New("旧密码验证失败，无法变更密码")
+	}
+
+	// 加密密码
+	pdata, _ := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	newPassword = string(pdata)
+
+	_, err = gb.DB.Table("sys_user").Cols("password").
+		Where("user_id = ?", userId).Update(entity.SysUser{Password: newPassword})
+	return err
+}
+
+func (us *userService) UpdateOwnerAvatar(user login.LoginUser, file *multipart.FileHeader) (string, error) {
+	// 检查文件后缀
+	ext, err := us.checkAvatarFileType(file.Filename)
+	if err != nil {
+		return "", err
+	}
+
+	// 检查文件大小
+	if file.Size > 5*1024*1024 {
+		return "", errors.New("文件大小不能超过5M")
+	}
+
+	// 保存文件
+	filePath, url := us.getAvatarPath(user.UserName, ext)
+	if err := us.saveAvatarFile(filePath, file); err != nil {
+		return "", err
+	}
+
+	// 更新数据库头像路径
+	if err := us.updateUserAvatar(user.UserId, url); err != nil {
+		return "", err
+	}
+
+	// 删除用户旧头像（尽量减少空间，不做失败处理）
+	us.deleteOldAvatar(filePath)
+
+	return url, err
+}
+
+// 检查文件格式
+func (us *userService) checkAvatarFileType(fileName string) (string, error) {
+	ext := filepath.Ext(fileName)
+	if ext == "" {
+		return "", errors.New("文件格式不正确")
+	}
+	fileTypeList := []string{".png", ".jpg", ".jpeg", ".gif"}
+	if ext, exist := util.NewList(fileTypeList).First(func(t string) bool { return strings.EqualFold(ext, t) }); !exist {
+		return "", errors.New("文件格式需为: png/jpg/jpeg/gif")
+	} else {
+		return ext, nil
+	}
+}
+
+func (us *userService) getAvatarPath(userName, ext string) (path, url string) {
+	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	name := filepath.Join(userName, strconv.FormatInt(time.Now().UnixMilli(), 10)+ext)
+	path = filepath.Join(gb.Config.FilePath.Avatar.RootStore, name)
+	url = fmt.Sprintf("%s/%s/%s%s", gb.Config.FilePath.Avatar.RootUrl, userName, timestamp, ext)
+	return
+}
+
+func (us *userService) saveAvatarFile(filePath string, file *multipart.FileHeader) error {
+	// 创建目录
+	if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+		return err
+	}
+
+	// 原文件
+	srcfile, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer srcfile.Close()
+
+	// 目标文件
+	tgtFile, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer tgtFile.Close()
+
+	// 写入数据
+	_, err = io.Copy(tgtFile, srcfile)
+	return err
+}
+
+func (us *userService) updateUserAvatar(userId int64, url string) error {
+	_, err := gb.DB.Cols("avatar").Where("user_id = ?", userId).Update(entity.SysUser{Avatar: url})
+	return err
+}
+
+func (us *userService) deleteOldAvatar(filePath string) {
+	dir := filepath.Dir(filePath)
+	if entryList, err := os.ReadDir(dir); err != nil {
+		gb.Logger.Warnln("查找头像文件失败", err.Error())
+	} else {
+		fileName := filepath.Base(filePath)
+		for _, entry := range entryList {
+			if entry.IsDir() || entry.Name() == fileName {
+				continue
+			}
+			if err := os.Remove(filepath.Join(dir, entry.Name())); err != nil {
+				gb.Logger.Warnln("删除用户旧头像失败", err.Error())
+			}
+		}
+	}
 }

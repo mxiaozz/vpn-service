@@ -20,8 +20,7 @@ type SysUser struct {
 	LoginDate   model.DateTime `json:"loginDate,omitempty"`
 	ValidDay    string         `json:"validDay,omitempty"`
 
-	Dept  SysDept   `xorm:"-" json:"dept,omitempty"`
-	Roles []SysRole `xorm:"-" json:"roles,omitempty"`
+	Dept SysDept `xorm:"-" json:"dept,omitempty"`
 
 	RoleIds []int64 `xorm:"-" json:"roleIds,omitempty" form:"roleIds"`
 	PostIds []int64 `xorm:"-" json:"postIds,omitempty" form:"postIds"`

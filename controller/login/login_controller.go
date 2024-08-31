@@ -90,6 +90,7 @@ func (c *loginController) GetUserInfo(ctx *gin.Context) {
 		rsp.Fail(err.Error(), ctx)
 		return
 	}
+	user.Password = ""
 	data["user"] = user
 
 	// role

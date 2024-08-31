@@ -69,16 +69,23 @@ func write(code int, obj any, msg string, flat bool, ctx *gin.Context) {
 
 	if obj != nil {
 		if flat {
-			if m, ok := obj.(map[string]any); ok {
+			switch m := obj.(type) {
+			case map[string]any:
 				for k, v := range m {
 					data[k] = v
 				}
-				goto to
+			case gin.H:
+				for k, v := range m {
+					data[k] = v
+				}
+			default:
+				gb.Logger.Errorf("obj is not map[string]any or gin.H")
 			}
+		} else {
+			data["data"] = obj
 		}
-		data["data"] = obj
 	}
-to:
+
 	if msg != "" {
 		data["msg"] = msg
 	}

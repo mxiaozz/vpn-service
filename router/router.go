@@ -45,6 +45,10 @@ func Init(engine *gin.Engine) {
 
 	// 用户管理
 	user := extModule("用户管理")
+	privateGroup.GET("/system/user/profile", system.ProfileController.GetOwnerInfo, user.Ext())
+	privateGroup.PUT("/system/user/profile", system.ProfileController.UpdateOwnerInfo, user.Ext())
+	privateGroup.PUT("/system/user/profile/updatePwd", system.ProfileController.UpdateOwnerPassword, user.Ext())
+	privateGroup.POST("/system/user/profile/avatar", system.ProfileController.UpdateOwnerAvatar, user.Ext())
 	privateGroup.GET("/system/user/", system.UserController.GetUserInfo, user.Ext("system:user:query"))
 	privateGroup.GET("/system/user/:userId", system.UserController.GetUserInfo, user.Ext("system:user:query"))
 	privateGroup.POST("/system/user", system.UserController.AddUser, user.Ext("system:user:add"))
