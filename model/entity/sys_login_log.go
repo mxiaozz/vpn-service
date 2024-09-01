@@ -16,3 +16,7 @@ type SysLoginLog struct {
 	// 前端提交的额外参数
 	Params map[string]any `xorm:"-" json:"params,omitempty"`
 }
+
+func (SysLoginLog) TableName() string {
+	return "sys_logininfor"
+}

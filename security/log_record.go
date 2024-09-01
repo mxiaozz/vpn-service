@@ -43,10 +43,12 @@ type logContext struct {
 }
 
 func saveLog(ctx *logContext) {
-	if strings.EqualFold(ctx.Path, "/login") {
+	parts := strings.Split(ctx.Path, "/")
+	lastPart := strings.ToLower(parts[len(parts)-1])
+	if lastPart == "login" {
 		setLoginUserName(ctx)
 		saveLoginLog(ctx)
-	} else if strings.EqualFold(ctx.Path, "/logout") {
+	} else if lastPart == "logout" {
 		saveLoginLog(ctx)
 	} else {
 		saveOperLog(ctx)
