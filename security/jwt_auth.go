@@ -10,24 +10,22 @@ import (
 	"vpn-web.funcworks.net/util/rsp"
 )
 
-func JWTAuth() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		loginUser, err := login.TokenService.GetLoginUser(ctx)
-		if err != nil {
-			if strings.HasSuffix(ctx.Request.URL.Path, "/logout") {
-				rsp.Ok(ctx)
-			} else {
-				rsp.FailWithCode(cst.HTTP_UNAUTHORIZED, "", ctx)
-			}
-			gb.Logger.Errorf(err.Error())
-			ctx.Abort()
-			return
+func JWTAuth(ctx *gin.Context) {
+	loginUser, err := login.TokenService.GetLoginUser(ctx)
+	if err != nil {
+		if strings.HasSuffix(ctx.Request.URL.Path, "/logout") {
+			rsp.Ok(ctx)
+		} else {
+			rsp.FailWithCode(cst.HTTP_UNAUTHORIZED, "", ctx)
 		}
-		login.TokenService.VerifyToken(loginUser)
-
-		// 将登录用户放置到 request上下文中
-		ctx.Set(cst.SYS_LOGIN_USER_KEY, loginUser)
-
-		ctx.Next()
+		gb.Logger.Errorf(err.Error())
+		ctx.Abort()
+		return
 	}
+	login.TokenService.VerifyToken(loginUser)
+
+	// 将登录用户放置到 request上下文中
+	ctx.Set(cst.SYS_LOGIN_USER_KEY, loginUser)
+
+	ctx.Next()
 }

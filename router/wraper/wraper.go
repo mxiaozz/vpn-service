@@ -1,4 +1,4 @@
-package router
+package wraper
 
 import (
 	"github.com/gin-gonic/gin"
@@ -28,6 +28,6 @@ func (wrap *RouterWraper) DELETE(relativePath string, handlers gin.HandlerFunc, 
 // 路由扩展信息
 // module 应用于日志记录
 // perms  为用户授权权限标识
-func extModule(module string) security.ExtInfo {
+func ExtModule(module string) security.ExtInfo {
 	return security.ExtInfo{Module: module}
 }
