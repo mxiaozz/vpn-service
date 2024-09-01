@@ -19,7 +19,7 @@ func HttpVpnGet[T any](url string) (T, error) {
 
 func HttpVpnPost[T any](url string, data map[string]any) (T, error) {
 	var zero T
-	obj, err := HttpVpnSend[T]("POST", url, nil)
+	obj, err := HttpVpnSend[T]("POST", url, data)
 	if err != nil {
 		return zero, err
 	}
