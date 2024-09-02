@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -44,13 +45,34 @@ type logContext struct {
 
 func saveLog(ctx *logContext) {
 	parts := strings.Split(ctx.Path, "/")
-	lastPart := strings.ToLower(parts[len(parts)-1])
+	lastPart := strings.ToLower(parts[len(parts)-1]) // 转换为小写方便一致性比较
 	if lastPart == "login" {
 		setLoginUserName(ctx)
 		saveLoginLog(ctx)
 	} else if lastPart == "logout" {
 		saveLoginLog(ctx)
 	} else {
+		if ctx.Method == http.MethodPost && lastPart == "user" ||
+			ctx.Method == http.MethodPut && lastPart == "resetpwd" {
+			// 用户管理：新增用户 | 重置密码
+			var data map[string]any
+			if err := json.Unmarshal(ctx.RequestBody, &data); err != nil {
+				gb.Logger.Errorln("保存日志", "解析请求json失败", err.Error())
+				ctx.RequestBody = nil
+			}
+			data["password"] = "***"
+			ctx.RequestBody, _ = json.Marshal(data)
+		} else if ctx.Method == http.MethodPut && lastPart == "updatepwd" {
+			// 个人中心：修改密码
+			var data map[string]any
+			if err := json.Unmarshal(ctx.RequestBody, &data); err != nil {
+				gb.Logger.Errorln("保存日志", "解析请求json失败", err.Error())
+				ctx.RequestBody = nil
+			}
+			data["oldPassword"] = "***"
+			data["newPassword"] = "***"
+			ctx.RequestBody, _ = json.Marshal(data)
+		}
 		saveOperLog(ctx)
 	}
 }
