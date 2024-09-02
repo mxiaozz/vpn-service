@@ -190,11 +190,9 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 				continue
 			}
 
-			for _, u := range os.vpnStatus.OnlineUsers {
+			for i, u := range os.vpnStatus.OnlineUsers {
 				if u.UserName == array[1] {
-					u.LoginLocation = array[0]
-					// 免除编辑器告警：unused write to field LoginLocation
-					_ = u.LoginLocation
+					os.vpnStatus.OnlineUsers[i].LoginLocation = array[0]
 					break
 				}
 			}

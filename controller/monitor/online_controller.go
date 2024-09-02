@@ -84,8 +84,9 @@ func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 	vpnUsers := util.Convert(openvpn.OpenvpnService.VpnStatus.OnlineUsers,
 		func(u entity.SysLoginLog) response.UserOnline {
 			return response.UserOnline{
+				TokenId:       u.LoginLocation, // 虚拟IP
 				UserName:      u.UserName,
-				Ipaddr:        u.Ipaddr,
+				Ipaddr:        u.Ipaddr, // client ip
 				LoginLocation: "openvpn",
 				LoginTime:     u.LoginTime.Time().UnixMilli(),
 			}
