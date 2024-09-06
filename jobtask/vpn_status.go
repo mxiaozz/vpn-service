@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -198,6 +199,10 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 			}
 		}
 	}
+
+	slices.SortFunc(os.vpnStatus.OnlineUsers, func(a, b entity.SysLoginLog) int {
+		return b.LoginTime.Time().Compare(a.LoginTime.Time())
+	})
 
 	return nil
 }
