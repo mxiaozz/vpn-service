@@ -36,6 +36,13 @@ func (c *jobLogController) GetJobLogListPage(ctx *gin.Context) {
 		rsp.Fail("任务日志查询参数格式不正确", ctx)
 		return
 	}
+	if jobLog.Params == nil {
+		jobLog.Params = make(map[string]any)
+		params := ctx.QueryMap("params")
+		for k, v := range params {
+			jobLog.Params[k] = v
+		}
+	}
 
 	// 分页查询
 	if err = system.JobLogService.GetJobLogListPage(jobLog, page); err != nil {
