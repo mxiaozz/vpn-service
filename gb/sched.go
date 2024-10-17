@@ -29,5 +29,6 @@ type SchedJob struct {
 	JobName        string // 任务名称
 	JobGroup       string // 任务组
 	InvokeTarget   string // 调用目标
-	CronExpression string // cron表达式
+	CronExpression string // cron表达式(优先 Interval)
+	Interval       int    // 间隔时间(单位时间秒)
 }

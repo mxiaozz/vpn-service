@@ -47,18 +47,28 @@ func (sm *schedManager) ScheduleJob(job gb.SchedJob) error {
 	if schedJob, _ := sm.sched.GetScheduledJob(jobKey); schedJob != nil {
 		sm.sched.DeleteJob(jobKey)
 	}
-	cronTrigger, err := quartz.NewCronTriggerWithLoc(job.CronExpression, time.Local)
-	if err != nil {
-		return err
+
+	var trigger quartz.Trigger
+	if job.CronExpression != "" {
+		cronTrigger, err := quartz.NewCronTriggerWithLoc(job.CronExpression, time.Local)
+		if err != nil {
+			return err
+		}
+		trigger = cronTrigger
+	} else if job.Interval > 0 {
+		trigger = quartz.NewSimpleTrigger(time.Duration(job.Interval) * time.Second)
+	} else {
+		return errors.New("job.cronExpression and job.interval is empty")
 	}
+
 	funcJob, err := sm.newFunctionJob(job)
 	if err != nil {
 		return err
 	}
 	jobDetail := quartz.NewJobDetail(funcJob, jobKey)
 
-	gb.Logger.Infoln("调度任务:", job.JobName)
-	return sm.sched.ScheduleJob(jobDetail, cronTrigger)
+	gb.Logger.Infoln("增加调度任务:", job.JobName)
+	return sm.sched.ScheduleJob(jobDetail, trigger)
 }
 
 func (sm *schedManager) getJobKey(job gb.SchedJob) *quartz.JobKey {
