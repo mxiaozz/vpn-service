@@ -66,8 +66,25 @@ func (ds *dictService) UpdateDict(dict entity.SysDictType) error {
 		return errors.New("字典类型已存在")
 	}
 
-	_, err := gb.DB.Where("dict_id = ?", dict.DictId).Update(dict)
-	return err
+	return gb.Tx(func(dbSession *xorm.Session) error {
+		oldDict := entity.SysDictType{}
+		if exist, err := dbSession.Where("dict_id = ?", dict.DictId).Get(&oldDict); err != nil {
+			return err
+		} else if !exist {
+			return errors.Wrap(gb.ErrNotFound, "字典不存在")
+		}
+
+		if _, err := dbSession.Where("dict_id = ?", dict.DictId).Update(dict); err != nil {
+			return err
+		}
+
+		if _, err := dbSession.Table("sys_dict_data").Cols("dict_type").
+			Where("dict_type = ?", oldDict.DictType).
+			Update(entity.SysDictData{DictType: dict.DictType}); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (ds *dictService) checkDictTypeUnique(dictType string, dictId int64) (bool, error) {

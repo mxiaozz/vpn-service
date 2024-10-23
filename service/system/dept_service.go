@@ -216,7 +216,7 @@ func (ds *deptService) DeleteDept(deptId int64) error {
 			return errors.New("存在下级部门，不能删除")
 		}
 
-		if exist, err := gb.DB.Table("sys_user").Where("dept_id = ?", deptId).Exist(); err != nil {
+		if exist, err := dbSession.Table("sys_user").Where("dept_id = ?", deptId).Exist(); err != nil {
 			return err
 		} else if exist {
 			return errors.New("部门存在关联用户，不能删除")

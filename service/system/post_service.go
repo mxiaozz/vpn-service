@@ -69,7 +69,7 @@ func (ps *postService) DeletePosts(postIds []int64) error {
 			} else if exist {
 				return errors.New("岗位存在用户关联，不能删除")
 			}
-			if _, err := gb.DB.Table("sys_post").Where("post_id = ?", postId).Delete(); err != nil {
+			if _, err := dbSession.Table("sys_post").Where("post_id = ?", postId).Delete(); err != nil {
 				return err
 			}
 		}
