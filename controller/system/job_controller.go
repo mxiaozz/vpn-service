@@ -3,7 +3,6 @@ package system
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/reugn/go-quartz/quartz"
@@ -80,7 +79,7 @@ func (c *jobController) AddJob(ctx *gin.Context) {
 
 	// 增补信息
 	job.CreateBy = c.GetLoginUser(ctx).UserName
-	job.CreateTime = model.DateTime(time.Now())
+	job.CreateTime = model.DateTimeNow()
 	job.Status = "1"
 
 	if err := system.JobService.AddJob(job); err != nil {
@@ -107,7 +106,7 @@ func (c *jobController) UpdateJob(ctx *gin.Context) {
 
 	// 增补信息
 	job.UpdateBy = c.GetLoginUser(ctx).UserName
-	job.UpdateTime = model.DateTime(time.Now())
+	job.UpdateTime = model.DateTimeNow()
 
 	if err := system.JobService.UpdateJob(job); err != nil {
 		gb.Logger.Errorln("修改任务失败", err.Error())

@@ -76,7 +76,7 @@ func (os *openvpnSchedule) handleState() error {
 	if err != nil {
 		return errors.Wrapf(err, "解析服务启动时间失败: %s", dateStr)
 	}
-	os.vpnStatus.StartTime = model.DateTime(time.Unix(timestamp, 0))
+	os.vpnStatus.StartTime = model.DateTime{Time: time.Unix(timestamp, 0)}
 
 	return nil
 }
@@ -144,7 +144,7 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 			if err != nil {
 				return errors.Wrapf(err, "解析服务器当前时间失败: %s", dateStr)
 			}
-			os.vpnStatus.Duration = util.TimeDistance(date, os.vpnStatus.StartTime.Time())
+			os.vpnStatus.Duration = util.TimeDistance(date, os.vpnStatus.StartTime.Time)
 			statusFlag = false
 		}
 
@@ -172,7 +172,7 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 				Ipaddr:    strings.Split(array[1], ":")[0],
 				Browser:   util.HumanByteSize(sizeSend),
 				Os:        util.HumanByteSize(sizeReceive),
-				LoginTime: model.DateTime(loginTime),
+				LoginTime: model.DateTime{Time: loginTime},
 				Msg:       util.TimeDistance(time.Now(), loginTime),
 			}
 			if os.vpnStatus.OnlineUsers == nil {
@@ -201,7 +201,7 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 	}
 
 	slices.SortFunc(os.vpnStatus.OnlineUsers, func(a, b entity.SysLoginLog) int {
-		return b.LoginTime.Time().Compare(a.LoginTime.Time())
+		return b.LoginTime.Compare(a.LoginTime.Time)
 	})
 
 	return nil

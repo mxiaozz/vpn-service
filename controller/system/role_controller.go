@@ -3,7 +3,6 @@ package system
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/controller"
@@ -83,7 +82,7 @@ func (c *roleController) AddRole(ctx *gin.Context) {
 
 	// 增补信息
 	role.CreateBy = c.GetLoginUser(ctx).UserName
-	role.CreateTime = model.DateTime(time.Now())
+	role.CreateTime = model.DateTimeNow()
 	role.DelFlag = "0"
 
 	if err := system.RoleService.AddRole(role); err != nil {
@@ -105,7 +104,7 @@ func (c *roleController) UpdateRole(ctx *gin.Context) {
 
 	// 增补信息
 	role.UpdateBy = c.GetLoginUser(ctx).UserName
-	role.UpdateTime = model.DateTime(time.Now())
+	role.UpdateTime = model.DateTimeNow()
 
 	if err := system.RoleService.UpdateRole(role); err != nil {
 		gb.Logger.Errorln("修改角色失败", err.Error())

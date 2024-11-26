@@ -100,7 +100,7 @@ func (sm *schedManager) newFunctionJob(job gb.SchedJob) (*quartzJob.FunctionJob[
 			JobName:      job.JobName,
 			JobGroup:     job.JobGroup,
 			InvokeTarget: job.InvokeTarget,
-			CreateTime:   model.DateTime(time.Now()),
+			CreateTime:   model.DateTimeNow(),
 		}
 		if rstErr != nil {
 			sysJogLob.Status = cst.SYS_FAIL

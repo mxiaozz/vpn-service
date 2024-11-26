@@ -3,7 +3,6 @@ package system
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/controller"
@@ -87,7 +86,7 @@ func (c *dictDataController) AddDictData(ctx *gin.Context) {
 
 	// 增补信息
 	dictData.CreateBy = c.GetLoginUser(ctx).UserName
-	dictData.CreateTime = model.DateTime(time.Now())
+	dictData.CreateTime = model.DateTimeNow()
 	dictData.Status = "0"
 
 	if err := system.DictDataService.AddDictData(dictData); err != nil {
@@ -108,7 +107,7 @@ func (c *dictDataController) UpdateDictData(ctx *gin.Context) {
 
 	// 增补信息
 	dictData.UpdateBy = c.GetLoginUser(ctx).UserName
-	dictData.UpdateTime = model.DateTime(time.Now())
+	dictData.UpdateTime = model.DateTimeNow()
 
 	if err := system.DictDataService.UpdateDictData(dictData); err != nil {
 		gb.Logger.Errorln("修改字典值失败", err.Error())

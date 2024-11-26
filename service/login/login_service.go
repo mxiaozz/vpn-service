@@ -1,8 +1,6 @@
 package login
 
 import (
-	"time"
-
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
@@ -137,7 +135,7 @@ func (us *loginService) updateLoginInfo(userId int64, clientIp string) {
 	user := &entity.SysUser{
 		UserId:    userId,
 		LoginIp:   clientIp,
-		LoginDate: model.DateTime(time.Now()),
+		LoginDate: model.DateTimeNow(),
 	}
 	if err := system.UserService.UpdateUserLoginInfo(user); err != nil {
 		gb.Logger.Error("更新登录信息失败", err)

@@ -88,7 +88,7 @@ func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 				UserName:      u.UserName,
 				Ipaddr:        u.Ipaddr, // client ip
 				LoginLocation: "openvpn",
-				LoginTime:     u.LoginTime.Time().UnixMilli(),
+				LoginTime:     u.LoginTime.UnixMilli(),
 			}
 		}).
 		Order(func(a, b response.UserOnline) int {

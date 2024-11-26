@@ -25,7 +25,7 @@ import (
 var OpenvpnService = &openvpnService{
 	VpnStatus: &vpn.OpenVpnStatus{
 		Status:          "未知",
-		LastUpdatedTime: model.DateTime(time.Now()),
+		LastUpdatedTime: model.DateTimeNow(),
 	},
 	mgmtUrl: gb.Viper.GetString("openvpn.mgmtUrl"),
 }
@@ -280,9 +280,9 @@ func (os *openvpnService) GetUserCert(userName string, isWithCert bool) (*vpn.Us
 		return nil, errors.Wrap(err, "用户证书x509解析失败")
 	}
 	userCert.Name = cert.Subject.CommonName
-	userCert.BeginTime = model.DateTime(cert.NotBefore)
-	userCert.EndTime = model.DateTime(cert.NotAfter)
-	userCert.Durtion = fmt.Sprintf("%d 天", util.DiffDays(userCert.EndTime.Time(), time.Now()))
+	userCert.BeginTime = model.DateTime{Time: cert.NotBefore}
+	userCert.EndTime = model.DateTime{Time: cert.NotAfter}
+	userCert.Durtion = fmt.Sprintf("%d 天", util.DiffDays(userCert.EndTime.Time, time.Now()))
 	if cert.NotAfter.After(time.Now()) {
 		userCert.Status = "有效"
 	} else {

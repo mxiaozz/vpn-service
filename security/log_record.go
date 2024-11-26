@@ -212,7 +212,7 @@ func doBefore(ext ExtInfo, ctx *gin.Context) (*logContext, error) {
 	logCtx.ResponseBuffer = writer.body
 
 	// 业务耗时记时开始
-	logCtx.BeginTime = model.DateTime(time.Now())
+	logCtx.BeginTime = model.DateTimeNow()
 
 	return logCtx, nil
 }
@@ -222,7 +222,7 @@ func doAfter(logCtx *logContext, ctx *gin.Context) {
 		return
 	}
 
-	logCtx.CostTime = time.Since(logCtx.BeginTime.Time())
+	logCtx.CostTime = time.Since(logCtx.BeginTime.Time)
 	logCtx.ResponseBody = logCtx.ResponseBuffer.Bytes()
 	logCtx.ResponseBuffer = nil
 	logCtx.ResponseContentType = ctx.Writer.Header().Get("Content-Type")

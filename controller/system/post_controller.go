@@ -3,7 +3,6 @@ package system
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/controller"
@@ -74,7 +73,7 @@ func (c *postController) AddPost(ctx *gin.Context) {
 
 	// 增补信息
 	post.CreateBy = c.GetLoginUser(ctx).UserName
-	post.CreateTime = model.DateTime(time.Now())
+	post.CreateTime = model.DateTimeNow()
 
 	if err := system.PostService.AddPost(post); err != nil {
 		gb.Logger.Errorln("增加岗位失败", err.Error())
@@ -95,7 +94,7 @@ func (c *postController) UpdatePost(ctx *gin.Context) {
 
 	// 增补信息
 	post.UpdateBy = c.GetLoginUser(ctx).UserName
-	post.UpdateTime = model.DateTime(time.Now())
+	post.UpdateTime = model.DateTimeNow()
 
 	if err := system.PostService.UpdatePost(post); err != nil {
 		gb.Logger.Errorln("修改岗位失败", err.Error())

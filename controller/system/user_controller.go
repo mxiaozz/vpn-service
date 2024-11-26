@@ -3,7 +3,6 @@ package system
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/controller"
@@ -130,7 +129,7 @@ func (c *userController) AddUser(ctx *gin.Context) {
 
 	// 增补信息
 	user.CreateBy = c.GetLoginUser(ctx).UserName
-	user.CreateTime = model.DateTime(time.Now())
+	user.CreateTime = model.DateTimeNow()
 	user.DelFlag = "0"
 
 	// 数据库增加
@@ -152,7 +151,7 @@ func (c *userController) UpdateUser(ctx *gin.Context) {
 
 	// 增补信息
 	user.UpdateBy = c.GetLoginUser(ctx).UserName
-	user.UpdateTime = model.DateTime(time.Now())
+	user.UpdateTime = model.DateTimeNow()
 
 	if err := system.UserService.UpdateUser(user); err != nil {
 		gb.Logger.Errorf(err.Error())

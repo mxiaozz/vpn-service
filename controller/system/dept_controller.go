@@ -2,7 +2,6 @@ package system
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/controller"
@@ -65,7 +64,7 @@ func (c *deptController) AddDept(ctx *gin.Context) {
 
 	// 增补信息
 	dept.CreateBy = c.GetLoginUser(ctx).UserName
-	dept.CreateTime = model.DateTime(time.Now())
+	dept.CreateTime = model.DateTimeNow()
 	dept.DelFlag = "0"
 
 	if err := system.DeptService.AddDept(dept); err != nil {
@@ -99,7 +98,7 @@ func (c *deptController) UpdateDept(ctx *gin.Context) {
 
 	// 增补信息
 	dept.UpdateBy = c.GetLoginUser(ctx).UserName
-	dept.UpdateTime = model.DateTime(time.Now())
+	dept.UpdateTime = model.DateTimeNow()
 
 	if err := system.DeptService.UpdateDept(dept); err != nil {
 		rsp.Fail(err.Error(), ctx)

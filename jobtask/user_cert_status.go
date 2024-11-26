@@ -39,8 +39,8 @@ func refreshUserCertStatus(params []any, ctx context.Context) (any, error) {
 
 func updateUserCertValidDay(userName string, userCert *vpn.UserCert) error {
 	validDay := "-"
-	if !userCert.EndTime.Time().IsZero() {
-		days := util.DiffDays(userCert.EndTime.Time(), time.Now())
+	if !userCert.EndTime.IsZero() {
+		days := util.DiffDays(userCert.EndTime.Time, time.Now())
 		validDay = fmt.Sprintf("%d天", days)
 	}
 	gb.Logger.Debugf("%s 证书有效期: %s", userName, validDay)

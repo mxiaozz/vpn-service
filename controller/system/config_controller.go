@@ -3,7 +3,6 @@ package system
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/controller"
@@ -94,7 +93,7 @@ func (c *configController) AddConfig(ctx *gin.Context) {
 
 	// 增补信息
 	config.CreateBy = c.GetLoginUser(ctx).UserName
-	config.CreateTime = model.DateTime(time.Now())
+	config.CreateTime = model.DateTimeNow()
 
 	if err := system.ConfigService.AddConfig(config); err != nil {
 		gb.Logger.Errorln("增加参数失败", err.Error())
@@ -114,7 +113,7 @@ func (c *configController) UpdateConfig(ctx *gin.Context) {
 
 	// 增补信息
 	config.UpdateBy = c.GetLoginUser(ctx).UserName
-	config.UpdateTime = model.DateTime(time.Now())
+	config.UpdateTime = model.DateTimeNow()
 
 	if err := system.ConfigService.UpdateConfig(config); err != nil {
 		gb.Logger.Errorln("修参数失败", err.Error())

@@ -2,7 +2,6 @@ package system
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/controller"
@@ -75,7 +74,7 @@ func (c *menuController) AddMenu(ctx *gin.Context) {
 
 	loginUser := c.GetLoginUser(ctx)
 	menu.CreateBy = loginUser.UserName
-	menu.CreateTime = model.DateTime(time.Now())
+	menu.CreateTime = model.DateTimeNow()
 
 	if err := system.MenuService.AddMenu(menu); err != nil {
 		gb.Logger.Errorf(err.Error())
@@ -105,7 +104,7 @@ func (c *menuController) UpdateMenu(ctx *gin.Context) {
 
 	loginUser := c.GetLoginUser(ctx)
 	menu.UpdateBy = loginUser.UserName
-	menu.UpdateTime = model.DateTime(time.Now())
+	menu.UpdateTime = model.DateTimeNow()
 
 	if err := system.MenuService.UpdateMenu(menu); err != nil {
 		gb.Logger.Errorf(err.Error())
