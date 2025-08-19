@@ -9,6 +9,7 @@ import (
 	"vpn-web.funcworks.net/gb"
 	"vpn-web.funcworks.net/model"
 	"vpn-web.funcworks.net/model/entity"
+	"vpn-web.funcworks.net/service/openvpn"
 	"vpn-web.funcworks.net/service/system"
 	"vpn-web.funcworks.net/util"
 	"vpn-web.funcworks.net/util/rsp"
@@ -174,6 +175,18 @@ func (c *userController) DeleteUser(ctx *gin.Context) {
 	if len(userIds) == 0 {
 		rsp.Fail("参数错误", ctx)
 		return
+	}
+
+	for _, id := range userIds {
+		if user, err := system.UserService.GetSysUserById(id, false); err != nil {
+			gb.Logger.Error(err.Error())
+			rsp.Fail(err.Error(), ctx)
+		} else {
+			if cert, _ := openvpn.OpenvpnService.GetUserCert(user.UserName, false); cert == nil || cert.Name != "" {
+				rsp.Fail("请先注销 "+user.UserName+" 用户证书后再删除", ctx)
+				return
+			}
+		}
 	}
 
 	if err := system.UserService.DeleteUser(userIds); err != nil {
