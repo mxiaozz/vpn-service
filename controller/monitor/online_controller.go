@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 	"vpn-web.funcworks.net/controller"
@@ -104,15 +105,20 @@ func (c *onlineController) GetOnlineUsers(ctx *gin.Context) {
 
 func (c *onlineController) ForceLogout(ctx *gin.Context) {
 	tokenId := ctx.Param("tokenId")
-	if tokenId != "" {
-		gb.RedisProxy.Delete(cst.CACHE_LOGIN_TOKEN_KEY + tokenId)
-		rsp.Ok(ctx)
+	if tokenId == "" {
+		gb.Logger.Errorln("强制下线用户tokenId参数错误")
+		rsp.Fail("参数错误", ctx)
 		return
 	}
 
-	userName := ctx.Param("userName")
-	if userName != "" {
-		openvpn.OpenvpnService.KickOut(userName)
+	if m, _ := regexp.MatchString("^\\d+\\.\\d+\\.\\d+\\.\\d+$", tokenId); m {
+		userName := ctx.Param("userName")
+		if userName != "" {
+			openvpn.OpenvpnService.KickOut(userName)
+		}
+	} else {
+		gb.RedisProxy.Delete(cst.CACHE_LOGIN_TOKEN_KEY + tokenId)
 	}
+
 	rsp.Ok(ctx)
 }
