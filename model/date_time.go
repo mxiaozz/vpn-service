@@ -94,7 +94,7 @@ func (dt DateTime) Value() (driver.Value, error) {
 	if dt.IsZero() {
 		return nil, nil
 	}
-	return dt.Time.Format(TimeFormat0), nil
+	return dt.Time.Local().Format(TimeFormat0), nil
 }
 
 func (dt *DateTime) Scan(value any) (err error) {
@@ -110,16 +110,12 @@ func (dt *DateTime) Scan(value any) (err error) {
 		dt.Time, err = time.ParseInLocation(TimeFormat0, v, time.Local)
 	case []byte:
 		dt.Time, err = time.ParseInLocation(TimeFormat0, string(v), time.Local)
-	case int:
-		dt.Time = time.Unix(int64(v), 0).In(time.Local)
-	case int64:
-		dt.Time = time.Unix(v, 0).In(time.Local)
 	default:
 		dt.Time = time.Time{}
 	}
 
 	if err != nil {
-		fmt.Println("DateTime Scan: " + err.Error())
+		fmt.Println("DateTime Scan Error: " + err.Error())
 	}
 
 	return nil
