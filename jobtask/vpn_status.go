@@ -43,6 +43,10 @@ func (os *openvpnSchedule) refreshVpnStatus(params []any, ctx context.Context) (
 	if err := os.handleState(); err != nil {
 		return nil, err
 	}
+
+	// 等待 2 秒钟，TCP数据流避免混淆
+	time.Sleep(2 * time.Second)
+
 	// 获取服务状态 和 当前在线用户
 	if err := os.handleOnlineUsers(); err != nil {
 		return nil, err
@@ -71,12 +75,13 @@ func (os *openvpnSchedule) handleState() error {
 	if stateStr == "" || stateStr == "END" || strings.HasPrefix(stateStr, "ERROR") {
 		return nil
 	}
-	dateStr := strings.Split(stateStr, ",")[0]
-	timestamp, err := strconv.ParseInt(dateStr, 10, 64)
+	parts := strings.Split(stateStr, ",")
+	timestamp, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		return errors.Wrapf(err, "解析服务启动时间失败: %s", dateStr)
+		return errors.Wrapf(err, "解析服务启动时间失败: %s", parts[0])
 	}
 	os.vpnStatus.StartTime = model.DateTime{Time: time.Unix(timestamp, 0)}
+	os.vpnStatus.ServerIp = parts[3]
 
 	return nil
 }
@@ -88,7 +93,7 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 		return errors.Wrap(err, "http获取当前在线用户失败")
 	}
 	data := obj.Rsp
-	gb.Logger.Debugf("state response: \n%s", data)
+	gb.Logger.Debugf("status response: \n%s", data)
 
 	statusStr := ""
 	statusFlag := false
@@ -144,6 +149,7 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 			if err != nil {
 				return errors.Wrapf(err, "解析服务器当前时间失败: %s", dateStr)
 			}
+			os.vpnStatus.LastUpdatedTime = model.DateTime{Time: date}
 			os.vpnStatus.Duration = util.TimeDistance(date, os.vpnStatus.StartTime.Time)
 			statusFlag = false
 		}
@@ -191,11 +197,20 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 				continue
 			}
 
+			ipParts := strings.Split(os.vpnStatus.ServerIp, ".")
+
 			for i, u := range os.vpnStatus.OnlineUsers {
-				if u.UserName == array[1] {
-					os.vpnStatus.OnlineUsers[i].LoginLocation = array[0]
-					break
+				if u.UserName != array[1] {
+					continue
 				}
+				routerParts := strings.Split(array[0], ".")
+				if len(routerParts) != 4 || len(ipParts) != 4 {
+					continue
+				}
+				if routerParts[0] != ipParts[0] || routerParts[1] != ipParts[1] {
+					continue
+				}
+				os.vpnStatus.OnlineUsers[i].LoginLocation = array[0]
 			}
 		}
 	}
