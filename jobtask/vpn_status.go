@@ -48,7 +48,7 @@ func (os *openvpnSchedule) refreshVpnStatus(params []any, ctx context.Context) (
 	time.Sleep(2 * time.Second)
 
 	// 获取服务状态 和 当前在线用户
-	if err := os.handleOnlineUsers(); err != nil {
+	if err := os.handleOnlineUsersV2(); err != nil {
 		return nil, err
 	}
 
@@ -87,8 +87,8 @@ func (os *openvpnSchedule) handleState() error {
 }
 
 // 获取服务状态 和 当前在线用户
-func (os *openvpnSchedule) handleOnlineUsers() error {
-	obj, err := util.HttpVpnGet[vpn.MgmtResponse](os.mgmtUrl + "/status")
+func (os *openvpnSchedule) handleOnlineUsersV1() error {
+	obj, err := util.HttpVpnGet[vpn.MgmtResponse](os.mgmtUrl + "/status/v1")
 	if err != nil {
 		return errors.Wrap(err, "http获取当前在线用户失败")
 	}
@@ -212,6 +212,97 @@ func (os *openvpnSchedule) handleOnlineUsers() error {
 				}
 				os.vpnStatus.OnlineUsers[i].LoginLocation = array[0]
 			}
+		}
+	}
+
+	slices.SortFunc(os.vpnStatus.OnlineUsers, func(a, b entity.SysLoginLog) int {
+		return b.LoginTime.Compare(a.LoginTime.Time)
+	})
+
+	return nil
+}
+
+// 获取服务状态 和 当前在线用户
+func (os *openvpnSchedule) handleOnlineUsersV2() error {
+	obj, err := util.HttpVpnGet[vpn.MgmtResponse](os.mgmtUrl + "/status/v2")
+	if err != nil {
+		return errors.Wrap(err, "http获取当前在线用户失败")
+	}
+	data := obj.Rsp
+	gb.Logger.Debugf("status response: \n%s", data)
+
+	statusStr := ""
+	reader := bufio.NewReader(strings.NewReader(data))
+	for {
+		line, _, err := reader.ReadLine()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return errors.Wrap(err, "解析当前在线用户内容失败")
+		}
+		statusStr = string(line)
+
+		// 读取结束 或 遇到错误
+		if statusStr == "END" || strings.HasPrefix(statusStr, "ERROR") {
+			break
+		}
+
+		// 解析服务更新时间
+		if strings.HasPrefix(statusStr, "TIME") {
+			array := strings.Split(statusStr, ",")
+			if len(array) != 3 {
+				continue
+			}
+
+			dateStr := array[2]
+			dateUnix, err := strconv.ParseInt(dateStr, 10, 64)
+			if err != nil {
+				return errors.Wrapf(err, "解析服务器当前时间失败: %s", dateStr)
+			}
+			date := time.Unix(dateUnix, 0)
+			os.vpnStatus.LastUpdatedTime = model.DateTime{Time: date}
+			os.vpnStatus.Duration = util.TimeDistance(date, os.vpnStatus.StartTime.Time)
+			continue
+		}
+
+		// 解析在线用户列表
+		if strings.HasPrefix(statusStr, "CLIENT_LIST") {
+			array := strings.Split(statusStr, ",")
+			if len(array) != 13 {
+				continue
+			}
+
+			sizeSend, err := strconv.ParseInt(array[5], 10, 64)
+			if err != nil {
+				return errors.Wrapf(err, "解析用户发送数据量失败: %s", array[5])
+			}
+
+			sizeReceive, err := strconv.ParseInt(array[6], 10, 64)
+			if err != nil {
+				return errors.Wrapf(err, "解析用户接受数据量失败: %s", array[6])
+			}
+
+			dateStr := array[8]
+			dateUnix, err := strconv.ParseInt(dateStr, 10, 64)
+			if err != nil {
+				return errors.Wrapf(err, "解析用户登录时间失败: %s", dateStr)
+			}
+			loginTime := time.Unix(dateUnix, 0)
+
+			user := entity.SysLoginLog{
+				UserName:      array[1],
+				Ipaddr:        strings.Split(array[2], ":")[0],
+				Browser:       util.HumanByteSize(sizeSend),
+				Os:            util.HumanByteSize(sizeReceive),
+				LoginTime:     model.DateTime{Time: loginTime},
+				LoginLocation: array[3],
+				Msg:           util.TimeDistance(time.Now(), loginTime),
+			}
+			if os.vpnStatus.OnlineUsers == nil {
+				os.vpnStatus.OnlineUsers = make([]entity.SysLoginLog, 0)
+			}
+			os.vpnStatus.OnlineUsers = append(os.vpnStatus.OnlineUsers, user)
 		}
 	}
 
