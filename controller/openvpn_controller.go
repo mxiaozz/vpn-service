@@ -74,7 +74,7 @@ func (c *openvpnController) OptServer(ctx *gin.Context) {
 		return
 	}
 
-	list := []string{"start", "stop"}
+	list := []string{"start", "stop", "restart"}
 	if !slices.Contains(list, opt) {
 		rsp.Fail("opt is error", ctx)
 		return

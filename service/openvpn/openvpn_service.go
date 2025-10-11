@@ -80,13 +80,22 @@ func (os *openvpnService) ChangeServer(opt string) {
 		_, err = util.HttpVpnPost[string](os.mgmtUrl+"/serverStart", nil)
 	case "stop":
 		_, err = util.HttpVpnPost[string](os.mgmtUrl+"/serverStop", nil)
+	case "restart":
+		util.HttpVpnPost[string](os.mgmtUrl+"/serverStop", nil)
+		time.Sleep(2 * time.Second)
+		data, err2 := util.HttpVpnGet[string](os.mgmtUrl + "/serverStatus")
+		if err2 != nil {
+			err = err2
+		} else if data == "stopped" {
+			_, err = util.HttpVpnPost[string](os.mgmtUrl+"/serverStart", nil)
+		}
 	}
 	if err != nil {
 		gb.Logger.Errorf("changeServer: %s", err.Error())
 	}
 
-	// 暂停2s，等待 openvpn 状态稳定
-	time.Sleep(2 * time.Second)
+	// 暂停3s，等待 openvpn 状态稳定
+	time.Sleep(3 * time.Second)
 }
 
 func (os *openvpnService) GetServerConfig() (string, error) {
